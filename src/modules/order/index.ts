@@ -24,3 +24,5 @@ export type {
   PaymentMethod,
   PlaceOrderInput,
 } from "./types/order.types";
+
+export { orders, orderStatusEnum } from "./db/order.table";

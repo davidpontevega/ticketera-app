@@ -31,3 +31,5 @@ export type {
   VenueZone,
   ZoneSeating,
 } from "./types/ticket.types";
+
+export { tickets, ticketStatusEnum } from "./db/ticket.table";
