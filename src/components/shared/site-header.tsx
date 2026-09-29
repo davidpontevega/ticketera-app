@@ -5,6 +5,7 @@ import { Menu } from "lucide-react"
 
 import { BrandLogo } from "@/components/shared/brand-logo"
 import { UserMenu } from "@/modules/auth"
+import { ORGANIZER_PATH } from "@/modules/organizer"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -49,7 +50,7 @@ export function SiteHeader() {
           <UserMenu />
           <Button
             variant="outline"
-            render={<Link href="#" />}
+            render={<Link href={ORGANIZER_PATH} />}
             nativeButton={false}
             className="cursor-pointer border-primary text-primary hover:bg-primary hover:text-primary-foreground"
           >
@@ -81,7 +82,7 @@ export function SiteHeader() {
               <UserMenu layout="sheet" />
               <Button
                 variant="outline"
-                render={<Link href="#" />}
+                render={<Link href={ORGANIZER_PATH} />}
                 nativeButton={false}
                 className="w-full cursor-pointer border-primary text-primary hover:bg-primary hover:text-primary-foreground"
               >

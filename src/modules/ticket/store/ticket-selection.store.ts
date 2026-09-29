@@ -9,9 +9,10 @@ export interface TicketSelectionState {
   quantities: Record<string, number>; // solo zonas de admision general
   seatIds: Record<string, string[]>; // solo zonas numeradas
   startSelection: (eventId: string) => void;
-  selectZone: (zoneId: string) => void;
+  selectZone: (zoneId: string | null) => void; // null = volver a la vista general
   setQuantity: (zoneId: string, quantity: number) => void;
   toggleSeat: (zoneId: string, seatId: string) => void;
+  setSeats: (zoneId: string, seatIds: string[]) => void; // reemplaza (ej. "mejores asientos")
   reset: () => void;
 }
 
@@ -22,8 +23,8 @@ const INITIAL_SELECTION = {
   seatIds: {},
 } satisfies Pick<TicketSelectionState, "eventId" | "activeZoneId" | "quantities" | "seatIds">;
 
-// Persistido en sessionStorage: la seleccion sobrevive a un refresh del checkout,
-// se pierde al cerrar la pestaña y no se mezcla entre pestañas.
+// Persistido en localStorage (datos de prueba, spec 016): la seleccion sobrevive a un refresh
+// del checkout y a cerrar el navegador. Se ve y se borra en /dev/storage.
 export const useTicketSelectionStore = create<TicketSelectionState>()(
   persist(
     (set) => ({
@@ -47,11 +48,16 @@ export const useTicketSelectionStore = create<TicketSelectionState>()(
           const next = isSelected ? current.filter((id) => id !== seatId) : [...current, seatId];
           return { activeZoneId: zoneId, seatIds: { ...state.seatIds, [zoneId]: next } };
         }),
+      setSeats: (zoneId, seatIds) =>
+        set((state) => ({
+          activeZoneId: zoneId,
+          seatIds: { ...state.seatIds, [zoneId]: seatIds.slice(0, TICKET_MAX_PER_ZONE) },
+        })),
       reset: () => set(INITIAL_SELECTION),
     }),
     {
       name: "ticketera-ticket-selection",
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
       partialize: ({ eventId, activeZoneId, quantities, seatIds }) => ({
         eventId,
         activeZoneId,

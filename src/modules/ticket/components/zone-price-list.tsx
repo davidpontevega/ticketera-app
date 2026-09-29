@@ -1,5 +1,9 @@
 import { cn } from "@/lib/utils";
-import { EVENT_AVAILABILITY_LABEL, EventAvailabilityBadge, formatEventPrice } from "@/modules/event";
+import {
+  EVENT_AVAILABILITY_LABEL,
+  EventAvailabilityBadge,
+  formatEventPrice,
+} from "@/modules/event";
 
 import type { VenueZone } from "../types/ticket.types";
 
@@ -21,14 +25,15 @@ export function ZonePriceList({ zones, className }: ZonePriceListProps) {
             <span className="flex min-w-0 items-center gap-2.5">
               <span
                 aria-hidden
-                className={cn("size-3 shrink-0 rounded", isSoldOut ? "bg-border" : zone.colorClassName)}
+                className={cn("size-3 shrink-0 rounded", isSoldOut && "bg-border")}
+                style={isSoldOut ? undefined : { backgroundColor: zone.fillColor }}
               />
-              <span
-                className={cn("text-[15px] font-medium", isSoldOut && "text-muted-foreground")}
-              >
+              <span className={cn("text-[15px] font-medium", isSoldOut && "text-muted-foreground")}>
                 {zone.name}
               </span>
-              {zone.availability === "few-left" && <EventAvailabilityBadge availability="few-left" />}
+              {zone.availability === "few-left" && (
+                <EventAvailabilityBadge availability="few-left" />
+              )}
             </span>
             <span
               className={cn(

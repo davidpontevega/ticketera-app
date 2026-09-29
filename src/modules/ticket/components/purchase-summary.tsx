@@ -18,7 +18,12 @@ export interface PurchaseSummaryProps {
 function ContinueButton({ enabled, href }: { enabled: boolean; href: string }) {
   if (!enabled) {
     return (
-      <Button type="button" size="lg" disabled className="h-13 rounded-xl px-6 text-base font-semibold">
+      <Button
+        type="button"
+        size="lg"
+        disabled
+        className="h-13 rounded-xl px-6 text-base font-semibold"
+      >
         Continuar
       </Button>
     );

@@ -4,8 +4,10 @@ import type { RegisterFormValues } from "../types/auth.types";
 import {
   LOGIN_FORM_DEFAULT,
   REGISTER_FORM_DEFAULT,
+  validateForgotPassword,
   validateLogin,
   validateRegister,
+  validateResetPassword,
 } from "./auth.schema";
 
 const validRegister: RegisterFormValues = {
@@ -63,5 +65,29 @@ describe("validateRegister", () => {
     expect(validateRegister({ ...validRegister, acceptedTerms: false }).acceptedTerms).toBe(
       "Acepta los terminos para continuar",
     );
+  });
+});
+
+describe("validateForgotPassword", () => {
+  it("requires a valid email", () => {
+    expect(validateForgotPassword({ email: "maria@example.com" })).toEqual({});
+    expect(validateForgotPassword({ email: "maria" })).toEqual({
+      email: "Ingresa un correo valido",
+    });
+  });
+});
+
+describe("validateResetPassword", () => {
+  it("applies the password rules and requires a match", () => {
+    expect(validateResetPassword({ password: "nueva4567", confirmPassword: "nueva4567" })).toEqual(
+      {},
+    );
+    expect(validateResetPassword({ password: "nueva4567", confirmPassword: "otra" })).toEqual({
+      confirmPassword: "Las contraseñas no coinciden",
+    });
+    expect(validateResetPassword({ password: "corta", confirmPassword: "" })).toEqual({
+      password: "La contraseña debe tener al menos 8 caracteres",
+      confirmPassword: "Las contraseñas no coinciden",
+    });
   });
 });

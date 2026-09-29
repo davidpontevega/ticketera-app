@@ -8,8 +8,8 @@ import {
   getTrendingEvents,
   HeroCarousel,
   TrendingSidebar,
-  UpcomingEvents,
 } from "@/modules/event";
+import { CatalogUpcomingEvents } from "@/modules/catalog";
 import { NewsletterSignup } from "@/components/shared/newsletter-signup";
 
 export default function Home() {
@@ -29,7 +29,7 @@ export default function Home() {
         <BestSellerEvents events={getBestSellerEvents(EVENTS_MOCK)} />
       </div>
       <div className="max-w-7xl mx-auto px-4 md:px-6">
-        <UpcomingEvents events={EVENTS_MOCK} />
+        <CatalogUpcomingEvents />
       </div>
       <NewsletterSignup />
     </>

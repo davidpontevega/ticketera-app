@@ -1,8 +1,5 @@
-import { notFound } from "next/navigation";
-
-import { PurchaseHeader } from "@/components/shared/purchase-header";
-import { EVENTS_MOCK, getEventBySlug, getEventHref } from "@/modules/event";
-import { CheckoutForm } from "@/modules/order";
+import { EventCheckoutView, LocalEventCheckout } from "@/modules/catalog";
+import { EVENTS_MOCK, getEventBySlug } from "@/modules/event";
 import { getVenueLayout } from "@/modules/ticket";
 
 export function generateStaticParams() {
@@ -10,20 +7,10 @@ export function generateStaticParams() {
 }
 
 export default async function CheckoutPage({ params }: PageProps<"/events/[slug]/checkout">) {
-  const event = getEventBySlug(EVENTS_MOCK, (await params).slug);
-  if (!event) notFound();
+  const { slug } = await params;
+  const event = getEventBySlug(EVENTS_MOCK, slug);
+  // Slug fuera del mock: puede ser un evento publicado desde el panel (vive en el navegador).
+  if (!event) return <LocalEventCheckout slug={slug} />;
 
-  return (
-    <>
-      <PurchaseHeader
-        currentStep={2}
-        title="Datos y pago"
-        backHref={`${getEventHref(event.slug)}/tickets`}
-        backLabel="Volver a entradas"
-      />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-4 md:px-6 lg:py-8">
-        <CheckoutForm event={event} layout={getVenueLayout(event)} />
-      </main>
-    </>
-  );
+  return <EventCheckoutView event={event} layout={getVenueLayout(event)} />;
 }

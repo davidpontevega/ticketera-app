@@ -3,8 +3,11 @@ import { describe, expect, it } from "vitest";
 import { EVENTS_MOCK } from "@/modules/event/mocks/event.mock";
 import type { EventEntity } from "@/modules/event/types/event.types";
 
+import type { VenueZone, ZoneShape } from "../types/ticket.types";
 import {
   buildSeats,
+  findBestSeats,
+  getAvailableSeatCount,
   formatTicketCount,
   getTicketLines,
   getTicketTotals,
@@ -18,29 +21,35 @@ function getMockEvent(slug: string): EventEntity {
 }
 
 const badBunny = getMockEvent("bad-bunny-world-tour");
+const RECT: ZoneShape = { kind: "rect", x: 0, y: 0, width: 100, height: 100 };
 
 describe("buildSeats", () => {
   it("builds rows x seatsPerRow seats with row letters and ids", () => {
-    const seats = buildSeats("zone", 3, 4, 0);
+    const seats = buildSeats("zone", RECT, 3, 4, 0);
     expect(seats).toHaveLength(12);
-    expect(seats[0]).toEqual({ id: "zone-A-1", row: "A", number: 1, status: "available" });
+    expect(seats[0]).toMatchObject({ id: "zone-A-1", row: "A", number: 1, status: "available" });
+    expect(Number.isFinite(seats[0].x) && Number.isFinite(seats[0].y)).toBe(true);
     expect(seats.at(-1)?.id).toBe("zone-C-4");
   });
 
   it("is deterministic", () => {
-    expect(buildSeats("zone", 5, 10, 0.5)).toEqual(buildSeats("zone", 5, 10, 0.5));
+    expect(buildSeats("zone", RECT, 5, 10, 0.5)).toEqual(buildSeats("zone", RECT, 5, 10, 0.5));
   });
 
   it("marks roughly the given share of seats as occupied", () => {
-    const seats = buildSeats("zone", 10, 24, 0.25);
+    const seats = buildSeats("zone", RECT, 10, 24, 0.25);
     const occupied = seats.filter((seat) => seat.status === "occupied").length / seats.length;
     expect(occupied).toBeGreaterThan(0.1);
     expect(occupied).toBeLessThan(0.4);
   });
 
   it("occupies everything with occupancy 1 and nothing with 0", () => {
-    expect(buildSeats("zone", 2, 5, 1).every((seat) => seat.status === "occupied")).toBe(true);
-    expect(buildSeats("zone", 2, 5, 0).every((seat) => seat.status === "available")).toBe(true);
+    expect(buildSeats("zone", RECT, 2, 5, 1).every((seat) => seat.status === "occupied")).toBe(
+      true,
+    );
+    expect(buildSeats("zone", RECT, 2, 5, 0).every((seat) => seat.status === "available")).toBe(
+      true,
+    );
   });
 });
 
@@ -131,5 +140,47 @@ describe("formatTicketCount", () => {
     expect(formatTicketCount(1)).toBe("1 entrada");
     expect(formatTicketCount(0)).toBe("0 entradas");
     expect(formatTicketCount(3)).toBe("3 entradas");
+  });
+});
+
+function zoneWith(statuses: Record<string, ("available" | "occupied")[]>): VenueZone {
+  const seats = Object.entries(statuses).flatMap(([row, rowStatuses]) =>
+    rowStatuses.map((status, index) => ({
+      id: `z-${row}-${index + 1}`,
+      row,
+      number: index + 1,
+      status,
+      x: 0,
+      y: 0,
+      rotation: 0,
+    })),
+  );
+  return { ...getVenueLayout(badBunny).zones[2], id: "z", seats };
+}
+
+const A = "available" as const;
+const O = "occupied" as const;
+
+describe("findBestSeats", () => {
+  it("picks contiguous centered seats in the closest row", () => {
+    const zone = zoneWith({ A: [A, A, A, A, A, A, A], B: [A, A, A, A, A, A, A] });
+    expect(findBestSeats(zone, 3)).toEqual(["z-A-3", "z-A-4", "z-A-5"]);
+  });
+
+  it("skips occupied seats and rows without a contiguous block", () => {
+    const zone = zoneWith({ A: [A, O, A, O, A], B: [O, A, A, O, O] });
+    expect(findBestSeats(zone, 2)).toEqual(["z-B-2", "z-B-3"]);
+    expect(findBestSeats(zone, 1)).toEqual(["z-A-3"]);
+  });
+
+  it("returns [] when there is no block", () => {
+    expect(findBestSeats(zoneWith({ A: [A, O, A] }), 2)).toEqual([]);
+    expect(findBestSeats(zoneWith({ A: [A] }), 0)).toEqual([]);
+  });
+});
+
+describe("getAvailableSeatCount", () => {
+  it("counts available seats", () => {
+    expect(getAvailableSeatCount(zoneWith({ A: [A, O, A], B: [O] }))).toBe(2);
   });
 });

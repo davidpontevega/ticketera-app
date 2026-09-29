@@ -17,10 +17,11 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useIsClient } from "@/hooks/use-is-client";
 import type { EventEntity } from "@/modules/event";
+import { MY_TICKETS_PATH } from "@/modules/auth";
 import { useTicketSelectionStore } from "@/modules/ticket";
 
 import { useOrderStore } from "../store/order.store";
-import { buildEventCalendarFile } from "../utils/order.utils";
+import { downloadEventCalendar } from "../utils/order.utils";
 import { OrderTicketCard } from "./order-ticket-card";
 
 export interface OrderConfirmationProps {
@@ -45,19 +46,11 @@ const NEXT_STEPS = [
   },
 ];
 
-function downloadCalendarFile(event: EventEntity) {
-  const blob = new Blob([buildEventCalendarFile(event)], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${event.slug}.ics`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
 export function OrderConfirmation({ event }: OrderConfirmationProps) {
   const isClient = useIsClient();
-  const lastOrder = useOrderStore((state) => state.lastOrder);
+  const lastOrder = useOrderStore((state) =>
+    state.orders.find((item) => item.number === state.lastOrderNumber),
+  );
   const selectionEventId = useTicketSelectionStore((state) => state.eventId);
   const resetSelection = useTicketSelectionStore((state) => state.reset);
   const order = isClient && lastOrder?.eventId === event.id ? lastOrder : null;
@@ -110,7 +103,7 @@ export function OrderConfirmation({ event }: OrderConfirmationProps) {
       <div className="grid gap-2.5 sm:flex sm:justify-center">
         <Button
           size="lg"
-          render={<Link href="/my-tickets" />}
+          render={<Link href={`${MY_TICKETS_PATH}?order=${order.number}`} />}
           nativeButton={false}
           className="h-12 rounded-xl px-5 text-[15px]"
         >
@@ -122,7 +115,7 @@ export function OrderConfirmation({ event }: OrderConfirmationProps) {
             type="button"
             variant="outline"
             size="lg"
-            onClick={() => downloadCalendarFile(event)}
+            onClick={() => downloadEventCalendar(event)}
             className="h-12 rounded-xl px-5 text-[15px]"
           >
             <CalendarPlus aria-hidden />

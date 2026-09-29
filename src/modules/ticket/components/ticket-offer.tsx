@@ -14,7 +14,15 @@ export interface TicketOfferProps {
   isSoldOut: boolean;
 }
 
-function OfferButton({ href, isSoldOut, label }: { href: string; isSoldOut: boolean; label: string }) {
+function OfferButton({
+  href,
+  isSoldOut,
+  label,
+}: {
+  href: string;
+  isSoldOut: boolean;
+  label: string;
+}) {
   const className = "h-13 rounded-xl px-6 text-base font-semibold";
   if (isSoldOut) {
     return (

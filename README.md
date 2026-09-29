@@ -35,6 +35,34 @@ Abrir [http://localhost:3000](http://localhost:3000).
 
 Agregar componentes de shadcn: `npx shadcn@latest add <component>`.
 
+### Datos de prueba
+
+La app es solo UI/UX, sin backend. Cuentas (contraseñas hasheadas con SHA-256), sesion, pedidos, eventos del
+organizador, seleccion de entradas y correos simulados se guardan en `localStorage` con el prefijo `ticketera-`.
+
+- Cuenta demo: `demo@ticketera.pe` / `Demo1234`.
+- `/dev/inbox`: bandeja de correos simulados (por ejemplo, el enlace de "Olvidaste tu contraseña").
+- `/dev/storage`: ver y borrar los datos guardados, o reiniciar la app (link "Datos de prueba" en el footer).
+
+### Iniciar sesion con Google (opcional)
+
+Sin configuracion, "Continuar con Google" abre un selector de cuentas simulado. Para usar Google real
+(Google Identity Services):
+
+1. En [Google Cloud Console](https://console.cloud.google.com/apis/credentials) crear un proyecto y configurar la
+   pantalla de consentimiento OAuth (tipo "Externo", modo de prueba, agregando tu correo como usuario de prueba).
+2. Crear credenciales → **ID de cliente de OAuth** → tipo **Aplicacion web**.
+3. En **Origenes de JavaScript autorizados** agregar `http://localhost:3000` (y el dominio donde se despliegue).
+   No hace falta URI de redireccion: se usa el popup de Google.
+4. Crear `.env.local` en la raiz y reiniciar `npm run dev`:
+
+   ```bash
+   NEXT_PUBLIC_GOOGLE_CLIENT_ID=1234567890-abc.apps.googleusercontent.com
+   ```
+
+Limitacion: sin backend, la credencial (JWT) de Google se decodifica en el navegador **sin verificar su firma**.
+Sirve para probar el flujo, no para produccion.
+
 ## Estructura
 
 Organizacion **por modulo de dominio**. `src/app` es solo routing; la logica vive en `src/modules`.

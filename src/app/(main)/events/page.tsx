@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 
-import { EVENTS_MOCK, EventSearch } from "@/modules/event";
+import { CatalogEventSearch } from "@/modules/catalog";
 
 export const metadata: Metadata = {
   title: "Explora eventos | Ticketera",
@@ -21,9 +21,9 @@ function EventSearchFallback() {
 export default function EventsPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 lg:py-10">
-      {/* useSearchParams en EventSearch: el Suspense permite prerenderizar el resto de la pagina */}
+      {/* useSearchParams en la busqueda: el Suspense permite prerenderizar el resto de la pagina */}
       <Suspense fallback={<EventSearchFallback />}>
-        <EventSearch events={EVENTS_MOCK} />
+        <CatalogEventSearch />
       </Suspense>
     </div>
   );
