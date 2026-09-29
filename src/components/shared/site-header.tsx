@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Menu } from "lucide-react"
 
 import { BrandLogo } from "@/components/shared/brand-logo"
+import { UserMenu } from "@/modules/auth"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -45,9 +46,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden shrink-0 items-center gap-4 md:flex">
-          <Link href="#" className="text-sm font-medium hover:text-primary cursor-pointer">
-            Iniciar sesion
-          </Link>
+          <UserMenu />
           <Button
             variant="outline"
             render={<Link href="#" />}
@@ -79,9 +78,7 @@ export function SiteHeader() {
               <NavLinks className="cursor-pointer text-sm font-medium text-foreground" />
             </nav>
             <div className="mt-auto flex flex-col gap-4 p-4">
-              <Link href="#" className="text-sm font-medium hover:text-primary cursor-pointer">
-                Iniciar sesion
-              </Link>
+              <UserMenu layout="sheet" />
               <Button
                 variant="outline"
                 render={<Link href="#" />}

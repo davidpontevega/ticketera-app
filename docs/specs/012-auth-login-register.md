@@ -172,6 +172,23 @@ Ninguna bloquea. Defaults tomados, ajustables al aprobar:
 - Rutas separadas `/login` y `/register` en vez de una sola pagina con pestañas internas.
 
 ## Estado
-- Aprobacion humana: pendiente
-- Fase: spec
+- Aprobacion humana: aprobada (2026-09-29)
+- Fase: implementado (pendiente de review humano)
+- Desviaciones menores durante el desarrollo:
+  - Hook `src/modules/auth/hooks/use-auth-form.ts` (estado, errores en vivo, foco al primer error, envio simulado)
+    compartido por login y registro.
+  - `auth-signed-in.tsx` (estado "Ya iniciaste sesion") compartido por ambos formularios.
+  - `src/lib/focus-form-field.ts`: enfoca el control visible de checkbox/radio de base-ui; lo usan auth y el checkout
+    (reemplaza la logica equivalente que tenia `checkout-form.tsx`).
+  - `TextField` acepta `labelAction` y `trailing`; `PasswordField` se arma sobre `TextField`. Se exporta
+    `FORM_INPUT_CLASS_NAME` (lo usa tambien el input de documento del checkout).
+  - "Iniciar sesion" del header arma el `?redirect=` con pathname + query string al hacer click (con `usePathname`
+    solo se perdian, por ejemplo, los filtros de `/events`; leer `useSearchParams` en el header obligaria a envolver
+    cada pagina en Suspense).
+  - `MY_TICKETS_PATH` exportado desde `user-menu.tsx` para la spec 013.
+- Verificacion: 139 tests, `tsc`, `lint` y `build` OK (`/login` y `/register` estaticas). En Chromium: header ->
+  login con redirect (incluye query), errores y foco, pestañas conservan redirect, mostrar contraseña, errores en vivo,
+  "Creando cuenta...", redirect al volver, sesion en localStorage sin contraseña, reload conserva sesion, menu con
+  "Mis entradas"/"Cerrar sesion", "Ya iniciaste sesion", login con nombre registrado y con nombre derivado,
+  `?redirect=https://evil.com` termina en `/`, sheet mobile con usuario; sin scroll horizontal ni errores de consola.
 - Log de review: -

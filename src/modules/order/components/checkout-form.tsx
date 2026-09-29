@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { useCountdown } from "@/hooks/use-countdown";
 import { useIsClient } from "@/hooks/use-is-client";
+import { focusFormField } from "@/lib/focus-form-field";
 import { getEventHref, type EventEntity } from "@/modules/event";
 import {
   getTicketLines,
@@ -36,14 +37,7 @@ export interface CheckoutFormProps {
 
 function focusFirstError(errors: CheckoutErrors) {
   const firstField = CHECKOUT_FIELD_ORDER.find((field) => errors[field]);
-  if (!firstField) return;
-  const element = document.getElementById(getCheckoutFieldId(firstField));
-  // En checkbox/radio de base-ui el id queda en un input oculto: se enfoca el control visible.
-  const visibleControl =
-    element?.getAttribute("aria-hidden") === "true"
-      ? element.closest('[data-slot="field"]')?.querySelector<HTMLElement>('[role="checkbox"]')
-      : element;
-  visibleControl?.focus();
+  if (firstField) focusFormField(getCheckoutFieldId(firstField));
 }
 
 export function CheckoutForm({ event, layout }: CheckoutFormProps) {

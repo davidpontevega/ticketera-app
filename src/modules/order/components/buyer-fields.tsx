@@ -1,3 +1,4 @@
+import { FORM_INPUT_CLASS_NAME } from "@/components/shared/text-field";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
@@ -5,7 +6,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { DOCUMENT_TYPE_OPTIONS } from "../constants/order.constants";
 import type { BuyerInfo, CheckoutErrors, CheckoutFieldName } from "../types/order.types";
 import { getCheckoutFieldId } from "../utils/order.utils";
-import { CheckoutTextField, checkoutInputClassName } from "./checkout-text-field";
+import { CheckoutTextField } from "./checkout-text-field";
 
 export interface BuyerFieldsProps {
   values: BuyerInfo;
@@ -77,7 +78,7 @@ export function BuyerFields({ values, errors, onValueChange }: BuyerFieldsProps)
               aria-invalid={Boolean(documentError)}
               aria-describedby={documentError ? `${documentId}-error` : undefined}
               onChange={(event) => onValueChange("documentNumber", event.target.value)}
-              className={checkoutInputClassName}
+              className={FORM_INPUT_CLASS_NAME}
             />
           </div>
           {documentError && <FieldError id={`${documentId}-error`}>{documentError}</FieldError>}
