@@ -62,7 +62,8 @@ dibujan miles de asientos a la vez y mobile sigue siendo usable.
   todavia usa CTA naranja `#F97316` y grises zinc; MASTER (revision 6) define CTA = indigo `--cta` y grises slate. Los
   colores de zona son la escala indigo del board (`#4F46E5`, `#818CF8`, `#A5B4FC`, `#C7D2FE`), zona agotada `bg-muted`
   con texto `muted-foreground`.
-- **Estados de asiento:** disponible (borde/relleno de color de la zona), seleccionado (`fill-primary` + check),
+- **Estados de asiento:** disponible (relleno del color de la zona), seleccionado (`fill-foreground` + check; no
+  `fill-primary` porque Platea/Campo General ya usan el indigo primario),
   ocupado (`fill-muted` + `cursor-not-allowed`, `aria-disabled`). Leyenda visible bajo el mapa.
 - **Maximo 6 entradas por zona** (`TICKET_MAX_PER_ZONE`, igual al board). En zona numerada, al llegar a 6 los
   asientos disponibles no seleccionados quedan deshabilitados y se muestra el texto "Maximo 6 entradas por zona.".
@@ -308,6 +309,15 @@ Ninguna bloquea. Defaults tomados, ajustables al aprobar:
 - Zonas numeradas: solo tribunas Occidente/Oriente (estadio) y Platea/Mezzanine (teatro).
 
 ## Estado
-- Aprobacion humana: pendiente
-- Fase: spec
+- Aprobacion humana: aprobada (2026-09-29)
+- Fase: implementado (pendiente de review humano)
+- Desviaciones menores durante el desarrollo:
+  - Logo extraido a `src/components/shared/brand-logo.tsx` y reusado en `SiteHeader` y `PurchaseHeader` (DRY).
+  - `EventAvailabilityBadge` exportado desde el barrel de `event` para reusarlo en la lista de entradas.
+  - `(purchase)/layout.tsx` es un contenedor; el `<main>` y el `PurchaseHeader` los pone cada page (el paso cambia por page).
+  - Controles de zoom debajo del mapa (no superpuestos: tapaban la ultima columna de asientos).
+  - En mobile el SVG de asientos tiene ancho minimo 560px (asientos ~20px) y se recorre con pan/pinch.
+  - Resumen: los asientos se muestran como "Asientos C12, C13".
+- Verificacion: 65 tests, `tsc`, `lint` y `build` OK; revisado en Chromium a 1440px y 375px (estadio y teatro),
+  zoom por botones, seleccion por click y teclado, 404 en slug inexistente, sin scroll horizontal.
 - Log de review: -

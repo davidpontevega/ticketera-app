@@ -31,6 +31,13 @@ export function getBestSellerEvents(events: readonly EventEntity[]): EventEntity
   return events.filter((event) => event.isBestSeller);
 }
 
+export function getEventBySlug(
+  events: readonly EventEntity[],
+  slug: string,
+): EventEntity | undefined {
+  return events.find((event) => event.slug === slug);
+}
+
 export function getEventCategoryOption(category: EventCategory): EventCategoryOption {
   const option = EVENT_CATEGORIES.find((item) => item.id === category);
   if (!option) {

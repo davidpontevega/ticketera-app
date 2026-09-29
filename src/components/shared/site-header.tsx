@@ -1,8 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { Menu, Ticket } from "lucide-react"
+import { Menu } from "lucide-react"
 
+import { BrandLogo } from "@/components/shared/brand-logo"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -37,15 +38,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border shadow-sm bg-background">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 md:px-6">
-        <Link
-          href="/"
-          className="flex shrink-0 cursor-pointer items-center gap-2 text-lg font-semibold text-foreground"
-        >
-          <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Ticket className="size-5" aria-hidden />
-          </span>
-          Ticketera
-        </Link>
+        <BrandLogo />
 
         <nav className="hidden items-center gap-6 md:flex">
           <NavLinks className="cursor-pointer text-sm font-medium text-foreground" />

@@ -5,6 +5,8 @@ export { EventSearchBar } from "./components/event-search-bar";
 export { UpcomingEvents } from "./components/upcoming-events";
 export type { UpcomingEventsProps } from "./components/upcoming-events";
 export { EventCard } from "./components/event-card";
+export { EventAvailabilityBadge } from "./components/event-availability-badge";
+export type { EventAvailabilityBadgeProps } from "./components/event-availability-badge";
 export type { EventCardProps } from "./components/event-card";
 export { TrendingSidebar } from "./components/trending-sidebar";
 export type { TrendingSidebarProps } from "./components/trending-sidebar";
@@ -18,6 +20,7 @@ export {
   getFeaturedEvents,
   getTrendingEvents,
   getBestSellerEvents,
+  getEventBySlug,
   formatEventDate,
   formatEventPrice,
 } from "./utils/event.utils";

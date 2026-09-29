@@ -11,6 +11,7 @@ import {
   formatEventDateBadge,
   formatEventPrice,
   getBestSellerEvents,
+  getEventBySlug,
   getEventCategoryOption,
   getFeaturedEvents,
   getTrendingEvents,
@@ -292,5 +293,15 @@ describe("formatDateRangeLabel", () => {
     expect(result).toContain("14");
     expect(result).toContain("20");
     expect(result).toContain("–");
+  });
+});
+
+describe("getEventBySlug", () => {
+  it("returns the event with the given slug", () => {
+    expect(getEventBySlug(EVENTS_MOCK, "bad-bunny-world-tour")?.id).toBe("1");
+  });
+
+  it("returns undefined for an unknown slug", () => {
+    expect(getEventBySlug(EVENTS_MOCK, "no-existe")).toBeUndefined();
   });
 });
