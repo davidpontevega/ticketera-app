@@ -29,6 +29,7 @@ export {
   getEventBySlug,
   getEventHref,
   getRelatedEvents,
+  getEventCategoryOption,
   formatEventDate,
   formatEventPrice,
   formatEventLongDate,

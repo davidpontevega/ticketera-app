@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft, Check, Lock } from "lucide-react";
 
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { cn } from "@/lib/utils";
@@ -49,7 +49,7 @@ export function PurchaseHeader({ currentStep, title, backHref, backLabel }: Purc
                         : "border border-border",
                     )}
                   >
-                    {stepNumber}
+                    {isDone ? <Check className="size-4" aria-label="Completado" /> : stepNumber}
                   </span>
                   {step}
                 </span>

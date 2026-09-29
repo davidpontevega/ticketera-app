@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 import { TICKET_MAX_PER_ZONE } from "../constants/ticket.constants";
 
@@ -21,26 +22,42 @@ const INITIAL_SELECTION = {
   seatIds: {},
 } satisfies Pick<TicketSelectionState, "eventId" | "activeZoneId" | "quantities" | "seatIds">;
 
-export const useTicketSelectionStore = create<TicketSelectionState>()((set) => ({
-  ...INITIAL_SELECTION,
-  startSelection: (eventId) =>
-    set((state) => (state.eventId === eventId ? state : { ...INITIAL_SELECTION, eventId })),
-  selectZone: (activeZoneId) => set({ activeZoneId }),
-  setQuantity: (zoneId, quantity) =>
-    set((state) => ({
-      activeZoneId: zoneId,
-      quantities: {
-        ...state.quantities,
-        [zoneId]: Math.min(TICKET_MAX_PER_ZONE, Math.max(0, quantity)),
-      },
-    })),
-  toggleSeat: (zoneId, seatId) =>
-    set((state) => {
-      const current = state.seatIds[zoneId] ?? [];
-      const isSelected = current.includes(seatId);
-      if (!isSelected && current.length >= TICKET_MAX_PER_ZONE) return state;
-      const next = isSelected ? current.filter((id) => id !== seatId) : [...current, seatId];
-      return { activeZoneId: zoneId, seatIds: { ...state.seatIds, [zoneId]: next } };
+// Persistido en sessionStorage: la seleccion sobrevive a un refresh del checkout,
+// se pierde al cerrar la pestaña y no se mezcla entre pestañas.
+export const useTicketSelectionStore = create<TicketSelectionState>()(
+  persist(
+    (set) => ({
+      ...INITIAL_SELECTION,
+      startSelection: (eventId) =>
+        set((state) => (state.eventId === eventId ? state : { ...INITIAL_SELECTION, eventId })),
+      selectZone: (activeZoneId) => set({ activeZoneId }),
+      setQuantity: (zoneId, quantity) =>
+        set((state) => ({
+          activeZoneId: zoneId,
+          quantities: {
+            ...state.quantities,
+            [zoneId]: Math.min(TICKET_MAX_PER_ZONE, Math.max(0, quantity)),
+          },
+        })),
+      toggleSeat: (zoneId, seatId) =>
+        set((state) => {
+          const current = state.seatIds[zoneId] ?? [];
+          const isSelected = current.includes(seatId);
+          if (!isSelected && current.length >= TICKET_MAX_PER_ZONE) return state;
+          const next = isSelected ? current.filter((id) => id !== seatId) : [...current, seatId];
+          return { activeZoneId: zoneId, seatIds: { ...state.seatIds, [zoneId]: next } };
+        }),
+      reset: () => set(INITIAL_SELECTION),
     }),
-  reset: () => set(INITIAL_SELECTION),
-}));
+    {
+      name: "ticketera-ticket-selection",
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: ({ eventId, activeZoneId, quantities, seatIds }) => ({
+        eventId,
+        activeZoneId,
+        quantities,
+        seatIds,
+      }),
+    },
+  ),
+);

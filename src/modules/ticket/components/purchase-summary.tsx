@@ -8,6 +8,7 @@ import { formatEventPrice } from "@/modules/event";
 
 import type { TicketLine } from "../types/ticket.types";
 import { formatTicketCount, getTicketTotals } from "../utils/ticket.utils";
+import { TicketLineList } from "./ticket-line-list";
 
 export interface PurchaseSummaryProps {
   lines: readonly TicketLine[];
@@ -50,23 +51,7 @@ export function PurchaseSummary({ lines, checkoutHref }: PurchaseSummaryProps) {
       >
         <h2 className="text-lg font-semibold">Tu compra</h2>
         {hasLines ? (
-          <ul className="flex flex-col gap-3">
-            {lines.map((line) => (
-              <li key={line.zoneId} className="flex flex-col gap-0.5">
-                <span className="flex justify-between gap-3 text-[15px]">
-                  <span>
-                    {line.quantity} × {line.zoneName}
-                  </span>
-                  <span className="font-semibold tabular-nums">{formatEventPrice(line.amount)}</span>
-                </span>
-                {line.seatLabels.length > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    Asientos {line.seatLabels.join(", ")}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+          <TicketLineList lines={lines} />
         ) : (
           <p className="rounded-xl border-[1.5px] border-dashed border-border p-5 text-center text-sm text-muted-foreground">
             Todavia no elegiste entradas. Toca una zona o usa los botones +.

@@ -237,6 +237,24 @@ Ninguna bloquea. Defaults tomados, ajustables al aprobar:
 - Seleccion y ultimo pedido en `sessionStorage` (no `localStorage`).
 
 ## Estado
-- Aprobacion humana: pendiente
-- Fase: spec
+- Aprobacion humana: aprobada (2026-09-29)
+- Fase: implementado (pendiente de review humano)
+- Desviaciones menores durante el desarrollo:
+  - Schema: `checkoutSchema` valida campo a campo y las reglas cruzadas (documento segun tipo, tarjeta segun metodo)
+    van aparte en `validateCheckout`: zod no ejecuta `superRefine` si falla algun campo base y el formulario vacio
+    tiene que mostrar todos los errores juntos. No existe `createCheckoutSchema`.
+  - Helpers extra en `order.utils.ts` (con test): `getCheckoutFieldId` y `setCheckoutField`.
+  - Componentes extra: `checkout-text-field.tsx` (Field + Label + Input + FieldError, DRY entre comprador y pago),
+    `src/components/shared/empty-state.tsx` (estados vacios de checkout y confirmacion) y
+    `src/modules/ticket/components/ticket-line-list.tsx` (lista de lineas compartida con `PurchaseSummary`).
+  - `CheckoutSummary` exporta tambien `CheckoutSummaryToggle` (resumen plegable mobile).
+  - La seleccion se limpia al montar la confirmacion (no en el submit del checkout), para evitar un flash del estado
+    vacio antes de navegar.
+  - Metodos de pago apilados en 1 columna en mobile ("PagoEfectivo" no entraba en 3 columnas a 375px).
+  - Con checkbox/radio de base-ui el `id` queda en un input oculto: el foco del primer error va al control visible.
+- Verificacion: 97 tests, `tsc`, `lint` y `build` OK. En Chromium: checkout vacio, seleccion -> checkout, refresh
+  conserva seleccion, 9 errores con foco en el primero, Yape oculta tarjeta, pago -> confirmacion (replace), pedido en
+  sessionStorage sin datos de tarjeta, seleccion limpia, descarga `.ics`, refresh de confirmacion, "atras" vuelve a
+  entradas, sin pedido -> "No encontramos tu compra", reserva vencida (reloj adelantado 10 min) bloquea el pago; sin
+  scroll horizontal a 375/640/768/1024/1440 ni errores de consola.
 - Log de review: -

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { useIsClient } from "@/hooks/use-is-client";
 import { getEventHref, type EventEntity } from "@/modules/event";
 
 import { TICKET_MAX_PER_ZONE } from "../constants/ticket.constants";
@@ -34,13 +35,15 @@ export function TicketSelection({ event, layout }: TicketSelectionProps) {
     setQuantity,
     toggleSeat,
   } = useTicketSelectionStore();
+  const isClient = useIsClient();
 
   useEffect(() => {
     startSelection(event.id);
   }, [event.id, startSelection]);
 
-  // Mientras el store no apunte a este evento, se ignora la seleccion de otro evento.
-  const isCurrentEvent = eventId === event.id;
+  // El store se persiste en sessionStorage: antes de hidratar (isClient) se renderiza vacio
+  // igual que el HTML estatico, y se ignora la seleccion que sea de otro evento.
+  const isCurrentEvent = isClient && eventId === event.id;
   const activeZone = isCurrentEvent
     ? layout.zones.find((zone) => zone.id === activeZoneId)
     : undefined;
