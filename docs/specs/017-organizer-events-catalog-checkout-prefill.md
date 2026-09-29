@@ -133,6 +133,6 @@ Ninguna bloquea. Default: el catalogo publico muestra los eventos publicados por
 (simula un marketplace). Otra opcion seria mostrar solo los del usuario logueado.
 
 ## Estado
-- Aprobacion humana: pendiente
+- Aprobacion humana: aprobada (2026-09-29)
 - Fase: spec
 - Log de review: -

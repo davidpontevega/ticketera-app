@@ -197,6 +197,6 @@ Orden: T1 → T2 → [T3 ‖ T4 ‖ T5] → T6. ~28 archivos.
   `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
 
 ## Estado
-- Aprobacion humana: pendiente
+- Aprobacion humana: aprobada (2026-09-29)
 - Fase: spec
 - Log de review: -

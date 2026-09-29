@@ -7,8 +7,11 @@ import type {
   TicketLine,
   TicketTotals,
   VenueLayout,
+  VenueZone,
   VenueZoneTemplate,
+  ZoneShape,
 } from "../types/ticket.types";
+import { layoutSeats } from "./venue-geometry";
 
 const ROW_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -25,20 +28,55 @@ function hashString(value: string): number {
 
 export function buildSeats(
   zoneId: string,
+  shape: ZoneShape,
   rows: number,
   seatsPerRow: number,
   occupancy: number,
 ): Seat[] {
-  const seats: Seat[] = [];
-  for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
-    const row = ROW_LETTERS[rowIndex];
-    for (let number = 1; number <= seatsPerRow; number += 1) {
-      const id = `${zoneId}-${row}-${number}`;
-      const isOccupied = hashString(id) % 100 < occupancy * 100;
-      seats.push({ id, row, number, status: isOccupied ? "occupied" : "available" });
+  return layoutSeats(shape, rows, seatsPerRow).map((position) => {
+    const row = ROW_LETTERS[position.row];
+    const id = `${zoneId}-${row}-${position.number}`;
+    const isOccupied = hashString(id) % 100 < occupancy * 100;
+    return {
+      id,
+      row,
+      number: position.number,
+      status: isOccupied ? "occupied" : "available",
+      x: position.x,
+      y: position.y,
+      rotation: position.rotation,
+    };
+  });
+}
+
+export function getAvailableSeatCount(zone: VenueZone): number {
+  return zone.seats.filter((seat) => seat.status === "available").length;
+}
+
+// "Mejores asientos": la fila mas cercana al escenario/campo (A primero) que tenga `quantity`
+// asientos contiguos disponibles; dentro de la fila, el bloque mas centrado. [] si no hay.
+export function findBestSeats(zone: VenueZone, quantity: number): string[] {
+  if (quantity < 1) return [];
+  const rows = new Map<string, Seat[]>();
+  for (const seat of zone.seats) rows.set(seat.row, [...(rows.get(seat.row) ?? []), seat]);
+
+  for (const seats of rows.values()) {
+    const ordered = [...seats].sort((a, b) => a.number - b.number);
+    const rowCenter = (ordered[0].number + ordered[ordered.length - 1].number) / 2;
+    let best: Seat[] | null = null;
+    for (let start = 0; start + quantity <= ordered.length; start += 1) {
+      const block = ordered.slice(start, start + quantity);
+      const isContiguous = block.every(
+        (seat, index) => index === 0 || seat.number === block[index - 1].number + 1,
+      );
+      if (!isContiguous || block.some((seat) => seat.status !== "available")) continue;
+      const blockCenter = (block[0].number + block[block.length - 1].number) / 2;
+      const bestCenter = best ? (best[0].number + best[best.length - 1].number) / 2 : Infinity;
+      if (Math.abs(blockCenter - rowCenter) < Math.abs(bestCenter - rowCenter)) best = block;
     }
+    if (best) return best.map((seat) => seat.id);
   }
-  return seats;
+  return [];
 }
 
 function getZonePrice(priceFrom: number, priceFactor: number): number {
@@ -51,7 +89,13 @@ function buildZone(template: VenueZoneTemplate, event: EventEntity) {
   const availability = event.availability === "sold-out" ? "sold-out" : zone.availability;
   const seats =
     zone.seating === "numbered"
-      ? buildSeats(zone.id, rows, seatsPerRow, SEAT_OCCUPANCY_BY_AVAILABILITY[availability])
+      ? buildSeats(
+          zone.id,
+          zone.shape,
+          rows,
+          seatsPerRow,
+          SEAT_OCCUPANCY_BY_AVAILABILITY[availability],
+        )
       : [];
   return { ...zone, availability, price: getZonePrice(event.priceFrom, priceFactor), seats };
 }

@@ -51,10 +51,8 @@ export function TicketTierList({
               >
                 <span
                   aria-hidden
-                  className={cn(
-                    "size-3 shrink-0 rounded",
-                    isSoldOut ? "bg-border" : zone.colorClassName,
-                  )}
+                  className={cn("size-3 shrink-0 rounded", isSoldOut && "bg-border")}
+                  style={isSoldOut ? undefined : { backgroundColor: zone.fillColor }}
                 />
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="flex flex-wrap items-center gap-2 text-[15px] font-semibold">

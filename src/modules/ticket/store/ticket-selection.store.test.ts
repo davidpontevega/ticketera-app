@@ -54,4 +54,14 @@ describe("useTicketSelectionStore", () => {
     }
     expect(getState().seatIds.occidente).toHaveLength(TICKET_MAX_PER_ZONE);
   });
+
+  it("setSeats replaces the seats of a zone and respects the max", () => {
+    getState().toggleSeat("occidente", "occidente-A-1");
+    getState().setSeats("occidente", ["occidente-B-1", "occidente-B-2"]);
+    expect(getState().seatIds.occidente).toEqual(["occidente-B-1", "occidente-B-2"]);
+    const many = Array.from({ length: 9 }, (_, index) => `occidente-C-${index + 1}`);
+    getState().setSeats("occidente", many);
+    expect(getState().seatIds.occidente).toHaveLength(TICKET_MAX_PER_ZONE);
+    expect(getState().activeZoneId).toBe("occidente");
+  });
 });

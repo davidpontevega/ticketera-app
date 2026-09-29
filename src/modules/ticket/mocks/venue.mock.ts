@@ -2,15 +2,29 @@ import type { EventCategory } from "@/modules/event";
 
 import type { VenueLayoutId, VenueTemplate } from "../types/ticket.types";
 
-const THIRDS_COLUMNS = "minmax(0,1fr) minmax(0,3fr) minmax(0,1fr)";
+// Tonos por precio (mas oscuro = mas caro) con su color de texto (contraste AA).
+const TONE = {
+  premium: { fillColor: "#4338CA", labelColor: "#FFFFFF" },
+  high: { fillColor: "#4F46E5", labelColor: "#FFFFFF" },
+  mid: { fillColor: "#818CF8", labelColor: "#1E1B4B" },
+  low: { fillColor: "#A5B4FC", labelColor: "#1E1B4B" },
+  basic: { fillColor: "#C7D2FE", labelColor: "#1E1B4B" },
+} as const;
+
+// Estadio: escenario arriba, campo al centro y tribunas en arco alrededor del campo.
+const STADIUM_CENTER = { cx: 500, cy: 330 };
+
+// Teatro: platea en abanico frente al escenario, palcos a los costados, mezzanine y galeria detras.
+const THEATER_CENTER = { cx: 500, cy: 40 };
 
 export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
   stadium: {
     id: "stadium",
-    stageLabel: "Escenario",
-    stageArea: { column: "2", row: "1" },
-    gridTemplateColumns: THIRDS_COLUMNS,
-    gridTemplateRows: "minmax(0,0.45fr) minmax(0,1fr) minmax(0,1.25fr) minmax(0,0.7fr)",
+    viewBox: { width: 1000, height: 720 },
+    stage: {
+      label: "Escenario",
+      shape: { kind: "rect", x: 380, y: 30, width: 240, height: 60, radius: 12 },
+    },
     zones: [
       {
         id: "vip",
@@ -19,9 +33,8 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 2.76,
         availability: "sold-out",
         seating: "general",
-        colorClassName: "bg-[#4338CA] text-white",
-        seatClassName: "fill-[#4338CA]",
-        area: { column: "2", row: "2" },
+        ...TONE.premium,
+        shape: { kind: "rect", x: 380, y: 115, width: 240, height: 130, radius: 14 },
       },
       {
         id: "general",
@@ -30,9 +43,8 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1.8,
         availability: "available",
         seating: "general",
-        colorClassName: "bg-[#4F46E5] text-white",
-        seatClassName: "fill-[#4F46E5]",
-        area: { column: "2", row: "3" },
+        ...TONE.high,
+        shape: { kind: "rect", x: 330, y: 265, width: 340, height: 220, radius: 18 },
       },
       {
         id: "occidente",
@@ -41,9 +53,15 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1.52,
         availability: "few-left",
         seating: "numbered",
-        colorClassName: "bg-[#818CF8] text-[#1E1B4B]",
-        seatClassName: "fill-[#818CF8]",
-        area: { column: "1", row: "1 / 4" },
+        ...TONE.mid,
+        shape: {
+          kind: "arc",
+          ...STADIUM_CENTER,
+          innerRadius: 230,
+          outerRadius: 360,
+          startAngle: 145,
+          endAngle: 215,
+        },
         rows: 10,
         seatsPerRow: 24,
       },
@@ -54,9 +72,15 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1.28,
         availability: "available",
         seating: "numbered",
-        colorClassName: "bg-[#A5B4FC] text-[#1E1B4B]",
-        seatClassName: "fill-[#A5B4FC]",
-        area: { column: "3", row: "1 / 4" },
+        ...TONE.low,
+        shape: {
+          kind: "arc",
+          ...STADIUM_CENTER,
+          innerRadius: 230,
+          outerRadius: 360,
+          startAngle: -35,
+          endAngle: 35,
+        },
         rows: 10,
         seatsPerRow: 24,
       },
@@ -67,18 +91,25 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1,
         availability: "available",
         seating: "general",
-        colorClassName: "bg-[#C7D2FE] text-[#1E1B4B]",
-        seatClassName: "fill-[#C7D2FE]",
-        area: { column: "1 / -1", row: "4" },
+        ...TONE.basic,
+        shape: {
+          kind: "arc",
+          ...STADIUM_CENTER,
+          innerRadius: 230,
+          outerRadius: 360,
+          startAngle: 55,
+          endAngle: 125,
+        },
       },
     ],
   },
   theater: {
     id: "theater",
-    stageLabel: "Escenario",
-    stageArea: { column: "2", row: "1" },
-    gridTemplateColumns: THIRDS_COLUMNS,
-    gridTemplateRows: "minmax(0,0.45fr) minmax(0,1.4fr) minmax(0,0.9fr) minmax(0,0.6fr)",
+    viewBox: { width: 1000, height: 700 },
+    stage: {
+      label: "Escenario",
+      shape: { kind: "rect", x: 330, y: 20, width: 340, height: 56, radius: 28 },
+    },
     zones: [
       {
         id: "platea",
@@ -87,9 +118,15 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 2.2,
         availability: "available",
         seating: "numbered",
-        colorClassName: "bg-[#4F46E5] text-white",
-        seatClassName: "fill-[#4F46E5]",
-        area: { column: "2", row: "2" },
+        ...TONE.high,
+        shape: {
+          kind: "arc",
+          ...THEATER_CENTER,
+          innerRadius: 110,
+          outerRadius: 360,
+          startAngle: 55,
+          endAngle: 125,
+        },
         rows: 12,
         seatsPerRow: 20,
       },
@@ -100,9 +137,15 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 3,
         availability: "few-left",
         seating: "general",
-        colorClassName: "bg-[#818CF8] text-[#1E1B4B]",
-        seatClassName: "fill-[#818CF8]",
-        area: { column: "1", row: "1 / 3" },
+        ...TONE.premium,
+        shape: {
+          kind: "arc",
+          ...THEATER_CENTER,
+          innerRadius: 150,
+          outerRadius: 330,
+          startAngle: 130,
+          endAngle: 160,
+        },
       },
       {
         id: "palco-derecho",
@@ -111,9 +154,15 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 3,
         availability: "few-left",
         seating: "general",
-        colorClassName: "bg-[#818CF8] text-[#1E1B4B]",
-        seatClassName: "fill-[#818CF8]",
-        area: { column: "3", row: "1 / 3" },
+        ...TONE.premium,
+        shape: {
+          kind: "arc",
+          ...THEATER_CENTER,
+          innerRadius: 150,
+          outerRadius: 330,
+          startAngle: 20,
+          endAngle: 50,
+        },
       },
       {
         id: "mezzanine",
@@ -122,11 +171,17 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1.6,
         availability: "available",
         seating: "numbered",
-        colorClassName: "bg-[#A5B4FC] text-[#1E1B4B]",
-        seatClassName: "fill-[#A5B4FC]",
-        area: { column: "1 / -1", row: "3" },
+        ...TONE.mid,
+        shape: {
+          kind: "arc",
+          ...THEATER_CENTER,
+          innerRadius: 390,
+          outerRadius: 500,
+          startAngle: 45,
+          endAngle: 135,
+        },
         rows: 6,
-        seatsPerRow: 22,
+        seatsPerRow: 28,
       },
       {
         id: "galeria",
@@ -135,18 +190,25 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1,
         availability: "available",
         seating: "general",
-        colorClassName: "bg-[#C7D2FE] text-[#1E1B4B]",
-        seatClassName: "fill-[#C7D2FE]",
-        area: { column: "1 / -1", row: "4" },
+        ...TONE.basic,
+        shape: {
+          kind: "arc",
+          ...THEATER_CENTER,
+          innerRadius: 530,
+          outerRadius: 620,
+          startAngle: 42,
+          endAngle: 138,
+        },
       },
     ],
   },
   "general-admission": {
     id: "general-admission",
-    stageLabel: "Ingreso",
-    stageArea: { column: "1", row: "1" },
-    gridTemplateColumns: "minmax(0,1fr)",
-    gridTemplateRows: "minmax(0,0.3fr) minmax(0,1fr)",
+    viewBox: { width: 1000, height: 520 },
+    stage: {
+      label: "Ingreso",
+      shape: { kind: "rect", x: 380, y: 30, width: 240, height: 50, radius: 12 },
+    },
     zones: [
       {
         id: "entrada-general",
@@ -155,9 +217,8 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1,
         availability: "available",
         seating: "general",
-        colorClassName: "bg-[#4F46E5] text-white",
-        seatClassName: "fill-[#4F46E5]",
-        area: { column: "1", row: "2" },
+        ...TONE.high,
+        shape: { kind: "rect", x: 200, y: 110, width: 600, height: 370, radius: 24 },
       },
     ],
   },

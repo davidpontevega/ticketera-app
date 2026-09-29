@@ -9,9 +9,10 @@ export interface TicketSelectionState {
   quantities: Record<string, number>; // solo zonas de admision general
   seatIds: Record<string, string[]>; // solo zonas numeradas
   startSelection: (eventId: string) => void;
-  selectZone: (zoneId: string) => void;
+  selectZone: (zoneId: string | null) => void; // null = volver a la vista general
   setQuantity: (zoneId: string, quantity: number) => void;
   toggleSeat: (zoneId: string, seatId: string) => void;
+  setSeats: (zoneId: string, seatIds: string[]) => void; // reemplaza (ej. "mejores asientos")
   reset: () => void;
 }
 
@@ -47,6 +48,11 @@ export const useTicketSelectionStore = create<TicketSelectionState>()(
           const next = isSelected ? current.filter((id) => id !== seatId) : [...current, seatId];
           return { activeZoneId: zoneId, seatIds: { ...state.seatIds, [zoneId]: next } };
         }),
+      setSeats: (zoneId, seatIds) =>
+        set((state) => ({
+          activeZoneId: zoneId,
+          seatIds: { ...state.seatIds, [zoneId]: seatIds.slice(0, TICKET_MAX_PER_ZONE) },
+        })),
       reset: () => set(INITIAL_SELECTION),
     }),
     {

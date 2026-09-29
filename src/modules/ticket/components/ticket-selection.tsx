@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsClient } from "@/hooks/use-is-client";
 import { getEventHref, type EventEntity } from "@/modules/event";
 
@@ -10,9 +11,10 @@ import { useTicketSelectionStore } from "../store/ticket-selection.store";
 import type { VenueLayout } from "../types/ticket.types";
 import { getTicketLines } from "../utils/ticket.utils";
 import { PurchaseSummary } from "./purchase-summary";
-import { SeatMap } from "./seat-map";
+import { SeatPickerPanel } from "./seat-picker-panel";
 import { TicketTierList } from "./ticket-tier-list";
-import { ZoneMap } from "./zone-map";
+import { VenueLegend } from "./venue-legend";
+import { VenueMap } from "./venue-map";
 
 export interface TicketSelectionProps {
   event: EventEntity;
@@ -20,7 +22,9 @@ export interface TicketSelectionProps {
 }
 
 function scrollToSeatMap() {
-  const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+  const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
   document.getElementById("seat-map")?.scrollIntoView({ behavior, block: "start" });
 }
 
@@ -34,6 +38,7 @@ export function TicketSelection({ event, layout }: TicketSelectionProps) {
     selectZone,
     setQuantity,
     toggleSeat,
+    setSeats,
   } = useTicketSelectionStore();
   const isClient = useIsClient();
 
@@ -41,7 +46,7 @@ export function TicketSelection({ event, layout }: TicketSelectionProps) {
     startSelection(event.id);
   }, [event.id, startSelection]);
 
-  // El store se persiste en sessionStorage: antes de hidratar (isClient) se renderiza vacio
+  // El store se persiste en localStorage/sessionStorage: antes de hidratar (isClient) se renderiza vacio
   // igual que el HTML estatico, y se ignora la seleccion que sea de otro evento.
   const isCurrentEvent = isClient && eventId === event.id;
   const activeZone = isCurrentEvent
@@ -58,16 +63,40 @@ export function TicketSelection({ event, layout }: TicketSelectionProps) {
   return (
     <div className="grid items-start gap-6 pb-32 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-8 lg:pb-0">
       <div className="flex min-w-0 flex-col gap-6">
-        <ZoneMap layout={layout} activeZoneId={activeZone?.id ?? null} onSelectZone={selectZone} />
-        {activeZone?.seating === "numbered" && (
-          <SeatMap
-            key={activeZone.id}
-            zone={activeZone}
-            selectedSeatIds={activeSeatIds}
-            maxReached={activeSeatIds.length >= TICKET_MAX_PER_ZONE}
-            onToggleSeat={(seatId) => toggleSeat(activeZone.id, seatId)}
-          />
-        )}
+        <Card id="seat-map" className="scroll-mt-24 sm:[--card-spacing:--spacing(6)]">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">
+              {activeZone?.seating === "numbered" ? "Elige tus asientos" : "Elige tu zona"}
+            </CardTitle>
+            <CardAction className="text-xs text-muted-foreground sm:text-sm">
+              {activeZone ? activeZone.name : "Toca una zona del mapa"}
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <VenueMap
+              layout={layout}
+              activeZoneId={activeZone?.id ?? null}
+              selectedSeatIds={activeSeatIds}
+              maxReached={activeSeatIds.length >= TICKET_MAX_PER_ZONE}
+              onSelectZone={selectZone}
+              onToggleSeat={toggleSeat}
+              onBack={() => selectZone(null)}
+            />
+            {activeZone?.seating === "numbered" && (
+              <SeatPickerPanel
+                key={activeZone.id}
+                zone={activeZone}
+                selectedSeatIds={activeSeatIds}
+                onSetSeats={(ids) => setSeats(activeZone.id, ids)}
+                onRemoveSeat={(seatId) => toggleSeat(activeZone.id, seatId)}
+              />
+            )}
+            <VenueLegend
+              layout={layout}
+              showSeatStates={layout.zones.some((zone) => zone.seating === "numbered")}
+            />
+          </CardContent>
+        </Card>
         <TicketTierList
           layout={layout}
           activeZoneId={activeZone?.id ?? null}

@@ -174,6 +174,21 @@ Orden: T1 → T2 → [T3 ‖ T4] → T5. ~17 archivos (4 se borran).
 Ninguna bloquea.
 
 ## Estado
-- Aprobacion humana: pendiente
-- Fase: spec
+- Aprobacion humana: aprobada (2026-09-29)
+- Fase: implementado (pendiente de review humano)
+- Desviaciones menores durante el desarrollo:
+  - `VenueZone` reemplaza `colorClassName`/`seatClassName`/`area` por `shape`, `fillColor` y `labelColor`; los
+    swatches de la lista de entradas y del detalle usan `fillColor`.
+  - Las filas interiores de un arco llevan menos asientos (distancia minima entre asientos de 14 unidades): en la
+    platea del teatro las primeras filas se superponian.
+  - Mezzanine pasa de 22 a 28 asientos por fila (el arco nuevo es mas ancho).
+  - `selectZone` acepta `null` ("Volver al mapa").
+  - Los asientos se dibujan en un grupo aparte (no dentro del boton de la zona) para no anidar controles.
+  - Mobile: el mapa tiene alto automatico en la vista general y 440 px al hacer zoom a una seccion; el zoom espera
+    80 ms a que la libreria mida el nuevo tamaño. Etiquetas de zona mas grandes en mobile (sin el precio, que queda
+    en la leyenda y el tooltip).
+- Verificacion: 179 tests, `tsc`, `lint` y `build` OK. En Chromium: estadio y teatro con formas en arco, zona agotada
+  rayada y no seleccionable, tooltip de zona y de asiento, zoom animado a la tribuna/platea, mejores asientos (B11,
+  B12) + chips, seleccion manual, resumen con asientos, "Volver al mapa"; mobile con zoom a la seccion; regresion de
+  detalle, seleccion -> checkout -> confirmacion sin errores; sin scroll horizontal ni errores de consola.
 - Log de review: -
