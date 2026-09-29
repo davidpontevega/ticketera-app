@@ -190,6 +190,20 @@ Ninguna bloquea. Defaults tomados, ajustables al aprobar:
 - Cualquier usuario logueado puede entrar al panel.
 
 ## Estado
-- Aprobacion humana: pendiente
-- Fase: spec
+- Aprobacion humana: aprobada (2026-09-29)
+- Fase: implementado (pendiente de review humano)
+- Desviaciones menores durante el desarrollo:
+  - Helpers extra: `toEventIsoDate` y `createId` en `organizer.utils.ts`; `createEmptyTier` y
+    `createEventFormValues` en el schema (ids nuevos por formulario).
+  - En la lista, un evento sin hora (borrador) muestra solo la fecha larga, para no mostrar "12:00 a. m.".
+  - El `Sheet` mobile del panel se controla con estado y se cierra al navegar (envolver los links en `SheetClose`
+    los metia dentro de un boton).
+  - Header: "Vender entradas" usa la constante `ORGANIZER_PATH` del modulo.
+  - Imagen del borrador de ejemplo: se reusa una foto del mock existente.
+- Verificacion: 167 tests, `tsc`, `lint` y `build` OK (`/organizer` y `/organizer/events/new` estaticas). En Chromium:
+  "Vender entradas" sin sesion -> login -> panel; indicadores (8,146 / S/ 1,691,660 / 3); filtro Borradores; publicar
+  vacio -> 13 errores con foco en el nombre; imagen .txt y > 1 MB rechazadas; PNG valido con preview y "Quitar";
+  capacidad 600 y vista previa en vivo; publicar -> vuelve al panel con "Eventos publicados 4" y la fila en 0/600;
+  editar borrador de ejemplo y guardar no duplica; reload conserva; otro usuario no ve lo creado; mobile con menu
+  lateral que se cierra al navegar; sin scroll horizontal ni errores de consola.
 - Log de review: -
