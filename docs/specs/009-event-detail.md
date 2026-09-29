@@ -211,7 +211,7 @@ Orden: T1 → T2 → [T3 ‖ T4 ‖ T5] → T6. ~19 archivos (6 son tests/tipos/
   - Fix en `EventCard`: imagen y contenido con `pointer-events-none` (el favorito con `pointer-events-auto`); antes
     tapaban el link overlay y el click en la card no navegaba.
   - Test existente de `formatEventDateBadge` usa una fecha fija en hora de Lima (fallaba con `TZ=Asia/Tokyo`).
-- Verificacion: 78 tests (tambien con `TZ` UTC, Asia/Tokyo, America/Lima, Pacific/Honolulu), `tsc`, `lint` y `build`
+- Verificacion: 77 tests (tambien con `TZ` UTC, Asia/Tokyo, America/Lima, Pacific/Honolulu), `tsc`, `lint` y `build`
   OK; en Chromium: 1440px y 375px, detalle -> entradas -> volver, evento agotado, links de la landing, 404, sin
   scroll horizontal ni errores de hidratacion con el navegador en Asia/Tokyo y Pacific/Honolulu.
 - Log de review: -
