@@ -64,6 +64,7 @@ export function TicketTierList({
                   <span className="text-sm text-muted-foreground">
                     {formatEventPrice(zone.price)} c/u
                     {zone.seating === "numbered" && " · Numerada"}
+                    {!isSoldOut && zone.remaining !== undefined && ` · Quedan ${zone.remaining}`}
                   </span>
                 </span>
 
@@ -75,7 +76,7 @@ export function TicketTierList({
                 {!isSoldOut && zone.seating === "general" && (
                   <QuantityStepper
                     value={quantities[zone.id] ?? 0}
-                    max={TICKET_MAX_PER_ZONE}
+                    max={Math.min(TICKET_MAX_PER_ZONE, zone.remaining ?? TICKET_MAX_PER_ZONE)}
                     label={zone.name}
                     onChange={(quantity) => onQuantityChange(zone.id, quantity)}
                   />

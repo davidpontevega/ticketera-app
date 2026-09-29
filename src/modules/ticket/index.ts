@@ -20,6 +20,7 @@ export {
 } from "./utils/ticket.utils";
 
 export { TICKET_MAX_PER_ZONE } from "./constants/ticket.constants";
+export { ZONE_TONES } from "./mocks/venue.mock";
 
 export type {
   Seat,
@@ -29,5 +30,6 @@ export type {
   VenueLayout,
   VenueLayoutId,
   VenueZone,
+  ZoneShape,
   ZoneSeating,
 } from "./types/ticket.types";

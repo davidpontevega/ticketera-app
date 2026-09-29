@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Ticket } from "lucide-react";
+import { LogIn, Sparkles, Ticket } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { useCountdown } from "@/hooks/use-countdown";
 import { useIsClient } from "@/hooks/use-is-client";
 import { focusFormField } from "@/lib/focus-form-field";
-import { useAuthStore } from "@/modules/auth";
+import { getAuthHref, useAuthStore } from "@/modules/auth";
 import { getEventHref, type EventEntity } from "@/modules/event";
 import {
   getTicketLines,
@@ -24,8 +24,13 @@ import {
 import { CHECKOUT_FIELD_ORDER, CHECKOUT_HOLD_SECONDS } from "../constants/order.constants";
 import { CHECKOUT_FORM_DEFAULT, validateCheckout } from "../schemas/checkout.schema";
 import { useOrderStore } from "../store/order.store";
-import type { CheckoutErrors, CheckoutFieldName } from "../types/order.types";
-import { getCheckoutFieldId, setCheckoutField, toOrderEventSnapshot } from "../utils/order.utils";
+import type { CheckoutErrors, CheckoutFieldName, Order } from "../types/order.types";
+import {
+  getCheckoutFieldId,
+  getCheckoutPrefill,
+  setCheckoutField,
+  toOrderEventSnapshot,
+} from "../utils/order.utils";
 import { BuyerFields } from "./buyer-fields";
 import { CheckoutSummary, CheckoutSummaryToggle } from "./checkout-summary";
 import { HoldTimerNotice } from "./hold-timer-notice";
@@ -34,6 +39,7 @@ import { PaymentFields } from "./payment-fields";
 export interface CheckoutFormProps {
   event: EventEntity;
   layout: VenueLayout;
+  onOrderPlaced?: (order: Order) => void; // ej. sumar las vendidas a un evento del organizador
 }
 
 function focusFirstError(errors: CheckoutErrors) {
@@ -41,7 +47,7 @@ function focusFirstError(errors: CheckoutErrors) {
   if (firstField) focusFormField(getCheckoutFieldId(firstField));
 }
 
-export function CheckoutForm({ event, layout }: CheckoutFormProps) {
+export function CheckoutForm({ event, layout, onOrderPlaced }: CheckoutFormProps) {
   const router = useRouter();
   const isClient = useIsClient();
   const { eventId, quantities, seatIds } = useTicketSelectionStore();
@@ -49,7 +55,12 @@ export function CheckoutForm({ event, layout }: CheckoutFormProps) {
   const user = useAuthStore((state) => state.user);
   const countdown = useCountdown(CHECKOUT_HOLD_SECONDS);
 
-  const [values, setValues] = useState(CHECKOUT_FORM_DEFAULT);
+  // Autocompletado solo en la carga inicial. El inicializador corre en el navegador con los stores
+  // ya hidratados, y el formulario no se renderiza antes de isClient (sin hydration mismatch).
+  const [prefill] = useState(() =>
+    getCheckoutPrefill(useAuthStore.getState().user, useOrderStore.getState().orders),
+  );
+  const [values, setValues] = useState(() => ({ ...CHECKOUT_FORM_DEFAULT, ...prefill }));
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [isPlacing, setIsPlacing] = useState(false);
@@ -104,7 +115,7 @@ export function CheckoutForm({ event, layout }: CheckoutFormProps) {
 
     const { paymentMethod, fullName, email, documentType, documentNumber, phone } = values;
     setIsPlacing(true);
-    placeOrder({
+    const order = placeOrder({
       eventId: event.id,
       event: toOrderEventSnapshot(event),
       accountEmail: user?.email ?? null,
@@ -119,6 +130,7 @@ export function CheckoutForm({ event, layout }: CheckoutFormProps) {
       lines,
       total: getTicketTotals(lines).amount,
     });
+    onOrderPlaced?.(order);
     router.replace(`${eventHref}/confirmation`);
   };
 
@@ -132,7 +144,29 @@ export function CheckoutForm({ event, layout }: CheckoutFormProps) {
       <div className="flex min-w-0 flex-col gap-5">
         <HoldTimerNotice label={countdown.label} isExpired={countdown.isExpired} />
         <CheckoutSummaryToggle event={event} lines={lines} ticketsHref={ticketsHref} />
-        <BuyerFields values={values} errors={errors} onValueChange={handleValueChange} />
+        <BuyerFields
+          values={values}
+          errors={errors}
+          onValueChange={handleValueChange}
+          notice={
+            user ? (
+              prefill.email && (
+                <p className="flex items-center gap-2 rounded-xl bg-primary/5 px-3 py-2.5 text-sm text-foreground">
+                  <Sparkles className="size-4 shrink-0 text-primary" aria-hidden />
+                  Completamos tus datos con tu cuenta. Puedes editarlos.
+                </p>
+              )
+            ) : (
+              <Link
+                href={getAuthHref("/login", `${eventHref}/checkout`)}
+                className="flex w-fit items-center gap-2 text-sm font-medium text-primary hover:underline"
+              >
+                <LogIn className="size-4" aria-hidden />
+                Inicia sesion para autocompletar tus datos
+              </Link>
+            )
+          }
+        />
         <PaymentFields
           paymentMethod={values.paymentMethod}
           card={values.card}

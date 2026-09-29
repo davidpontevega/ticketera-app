@@ -45,6 +45,7 @@ export interface VenueZone {
   fillColor: string; // color de la zona (SVG fill y swatches)
   labelColor: string; // texto sobre fillColor (contraste AA)
   seats: Seat[]; // [] si seating === "general"
+  remaining?: number; // entradas que quedan en una zona general con cupo (eventos del organizador)
 }
 
 interface VenueLayoutBase {

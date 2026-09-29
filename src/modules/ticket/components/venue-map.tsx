@@ -52,6 +52,7 @@ function prefersReducedMotion(): boolean {
 function getZoneStatusText(zone: VenueZone): string {
   if (zone.availability === "sold-out") return EVENT_AVAILABILITY_LABEL["sold-out"];
   if (zone.seating === "numbered") return `${getAvailableSeatCount(zone)} asientos libres`;
+  if (zone.remaining !== undefined) return `${zone.remaining} disponibles`;
   return EVENT_AVAILABILITY_LABEL[zone.availability];
 }
 

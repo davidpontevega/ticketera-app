@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { FORM_INPUT_CLASS_NAME } from "@/components/shared/text-field";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -12,9 +14,10 @@ export interface BuyerFieldsProps {
   values: BuyerInfo;
   errors: CheckoutErrors;
   onValueChange: (field: CheckoutFieldName, value: string) => void;
+  notice?: ReactNode; // aviso bajo el titulo (ej. datos autocompletados)
 }
 
-export function BuyerFields({ values, errors, onValueChange }: BuyerFieldsProps) {
+export function BuyerFields({ values, errors, onValueChange, notice }: BuyerFieldsProps) {
   const documentId = getCheckoutFieldId("documentNumber");
   const documentError = errors.documentNumber;
 
@@ -31,6 +34,7 @@ export function BuyerFields({ values, errors, onValueChange }: BuyerFieldsProps)
           Enviaremos tus entradas al correo que indiques.
         </p>
       </div>
+      {notice}
       <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
         <CheckoutTextField
           field="fullName"

@@ -8,6 +8,7 @@ import {
   formatPaymentMethod,
   generateOrderNumber,
   getCheckoutFieldId,
+  getCheckoutPrefill,
   getOrderTickets,
   getUserOrders,
   isOrderUpcoming,
@@ -143,5 +144,47 @@ describe("getUserOrders", () => {
       "TK-24817",
     ]);
     expect(getUserOrders(orders, "ana@example.com").map((order) => order.number)).toEqual(["TK-2"]);
+  });
+});
+
+describe("getCheckoutPrefill", () => {
+  const user = { fullName: "Ana Torres", email: "ana@test.pe" };
+  const baseOrder = getDemoOrders({ fullName: "Demo", email: "demo@test.pe" })[0];
+  const makeOrder = (number: string, createdAt: string, documentNumber: string): Order => ({
+    ...baseOrder,
+    number,
+    createdAt,
+    accountEmail: "ana@test.pe",
+    buyer: { ...baseOrder.buyer, documentType: "dni", documentNumber, phone: "987654321" },
+  });
+
+  it("returns nothing without a user", () => {
+    expect(getCheckoutPrefill(null, [])).toEqual({});
+  });
+
+  it("uses the account name and email", () => {
+    expect(getCheckoutPrefill(user, [])).toEqual({
+      fullName: "Ana Torres",
+      email: "ana@test.pe",
+    });
+  });
+
+  it("adds document and phone from the user's latest order", () => {
+    const orders = [
+      makeOrder("TK-1", "2026-09-01T10:00:00Z", "11111111"),
+      makeOrder("TK-2", "2026-09-20T10:00:00Z", "22222222"),
+      {
+        ...makeOrder("TK-3", "2026-09-25T10:00:00Z", "33333333"),
+        accountEmail: "otro@test.pe",
+        buyer: { ...baseOrder.buyer, email: "otro@test.pe", documentNumber: "33333333" },
+      },
+    ];
+    expect(getCheckoutPrefill(user, orders)).toEqual({
+      fullName: "Ana Torres",
+      email: "ana@test.pe",
+      documentType: "dni",
+      documentNumber: "22222222",
+      phone: "987654321",
+    });
   });
 });

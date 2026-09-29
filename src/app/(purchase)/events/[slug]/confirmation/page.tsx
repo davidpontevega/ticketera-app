@@ -1,23 +1,17 @@
-import { notFound } from "next/navigation";
-
-import { PurchaseHeader } from "@/components/shared/purchase-header";
+import { EventConfirmationView, LocalEventConfirmation } from "@/modules/catalog";
 import { EVENTS_MOCK, getEventBySlug } from "@/modules/event";
-import { OrderConfirmation } from "@/modules/order";
 
 export function generateStaticParams() {
   return EVENTS_MOCK.map(({ slug }) => ({ slug }));
 }
 
-export default async function ConfirmationPage({ params }: PageProps<"/events/[slug]/confirmation">) {
-  const event = getEventBySlug(EVENTS_MOCK, (await params).slug);
-  if (!event) notFound();
+export default async function ConfirmationPage({
+  params,
+}: PageProps<"/events/[slug]/confirmation">) {
+  const { slug } = await params;
+  const event = getEventBySlug(EVENTS_MOCK, slug);
+  // Slug fuera del mock: puede ser un evento publicado desde el panel (vive en el navegador).
+  if (!event) return <LocalEventConfirmation slug={slug} />;
 
-  return (
-    <>
-      <PurchaseHeader currentStep={3} title="Confirmacion" backHref="/" backLabel="Ir al inicio" />
-      <main className="w-full flex-1 px-4 py-8 md:px-6 lg:py-12">
-        <OrderConfirmation event={event} />
-      </main>
-    </>
-  );
+  return <EventConfirmationView event={event} />;
 }

@@ -3,7 +3,7 @@ import type { EventCategory } from "@/modules/event";
 import type { VenueLayoutId, VenueTemplate } from "../types/ticket.types";
 
 // Tonos por precio (mas oscuro = mas caro) con su color de texto (contraste AA).
-const TONE = {
+export const ZONE_TONES = {
   premium: { fillColor: "#4338CA", labelColor: "#FFFFFF" },
   high: { fillColor: "#4F46E5", labelColor: "#FFFFFF" },
   mid: { fillColor: "#818CF8", labelColor: "#1E1B4B" },
@@ -33,7 +33,7 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 2.76,
         availability: "sold-out",
         seating: "general",
-        ...TONE.premium,
+        ...ZONE_TONES.premium,
         shape: { kind: "rect", x: 380, y: 115, width: 240, height: 130, radius: 14 },
       },
       {
@@ -43,7 +43,7 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1.8,
         availability: "available",
         seating: "general",
-        ...TONE.high,
+        ...ZONE_TONES.high,
         shape: { kind: "rect", x: 330, y: 265, width: 340, height: 220, radius: 18 },
       },
       {
@@ -53,7 +53,7 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1.52,
         availability: "few-left",
         seating: "numbered",
-        ...TONE.mid,
+        ...ZONE_TONES.mid,
         shape: {
           kind: "arc",
           ...STADIUM_CENTER,
@@ -72,7 +72,7 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1.28,
         availability: "available",
         seating: "numbered",
-        ...TONE.low,
+        ...ZONE_TONES.low,
         shape: {
           kind: "arc",
           ...STADIUM_CENTER,
@@ -91,7 +91,7 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1,
         availability: "available",
         seating: "general",
-        ...TONE.basic,
+        ...ZONE_TONES.basic,
         shape: {
           kind: "arc",
           ...STADIUM_CENTER,
@@ -118,7 +118,7 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 2.2,
         availability: "available",
         seating: "numbered",
-        ...TONE.high,
+        ...ZONE_TONES.high,
         shape: {
           kind: "arc",
           ...THEATER_CENTER,
@@ -137,7 +137,7 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 3,
         availability: "few-left",
         seating: "general",
-        ...TONE.premium,
+        ...ZONE_TONES.premium,
         shape: {
           kind: "arc",
           ...THEATER_CENTER,
@@ -154,7 +154,7 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 3,
         availability: "few-left",
         seating: "general",
-        ...TONE.premium,
+        ...ZONE_TONES.premium,
         shape: {
           kind: "arc",
           ...THEATER_CENTER,
@@ -171,7 +171,7 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1.6,
         availability: "available",
         seating: "numbered",
-        ...TONE.mid,
+        ...ZONE_TONES.mid,
         shape: {
           kind: "arc",
           ...THEATER_CENTER,
@@ -190,7 +190,7 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1,
         availability: "available",
         seating: "general",
-        ...TONE.basic,
+        ...ZONE_TONES.basic,
         shape: {
           kind: "arc",
           ...THEATER_CENTER,
@@ -217,7 +217,7 @@ export const VENUE_TEMPLATES: Record<VenueLayoutId, VenueTemplate> = {
         priceFactor: 1,
         availability: "available",
         seating: "general",
-        ...TONE.high,
+        ...ZONE_TONES.high,
         shape: { kind: "rect", x: 200, y: 110, width: 600, height: 370, radius: 24 },
       },
     ],

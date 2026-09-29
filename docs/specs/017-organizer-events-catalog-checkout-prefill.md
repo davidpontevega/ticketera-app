@@ -54,7 +54,7 @@ que no estan en el mock.
   generados. Si la ruta queda dinamica, se documenta.
 - **Imagen en data URL:** `EventCard`, detalle y demas usan `next/image`. Para `data:` se pasa `unoptimized` (se
   agrega la condicion donde haga falta, sin cambiar el aspecto).
-- **Descripcion, direccion y horarios:** la direccion se arma como "<lugar>, <ciudad>"; apertura de puertas = inicio
+- **Descripcion, direccion y horarios:** la direccion es el lugar (la UI ya agrega la ciudad); apertura de puertas = inicio
   − 1 h; edad minima `null`.
 - **Capacidad y ventas:** la zona de cada tipo muestra `quantity - sold` disponibles. Si llega a 0, la zona queda
   agotada. Si todo esta agotado, el evento tambien.
@@ -107,19 +107,19 @@ export function getCheckoutPrefill(user: AuthUser | null, orders: readonly Order
 Orden: T1 → [T2 ‖ T3 ‖ T4] → T5. ~22 archivos.
 
 ## Criterios de aceptacion
-- [ ] AC1: Publicar un evento desde `/organizer/events/new` y abrir `/`: aparece en "Proximos eventos" (tambien al
+- [x] AC1: Publicar un evento desde `/organizer/events/new` y abrir `/`: aparece en "Proximos eventos" (tambien al
   filtrar por su categoria). En `/events` aparece en resultados, contadores y filtros (su ciudad y mes incluidos).
-- [ ] AC2: Su tarjeta lleva a `/events/<slug>` con hero, info, lugar, precios por tipo de entrada y relacionados. Un
+- [x] AC2: Su tarjeta lleva a `/events/<slug>` con hero, info, lugar, precios por tipo de entrada y relacionados. Un
   slug inexistente muestra "No encontramos este evento".
-- [ ] AC3: "Elegir entradas" muestra el recinto de admision general con los tipos del organizador (nombre, precio) y
+- [x] AC3: "Elegir entradas" muestra el recinto de admision general con los tipos del organizador (nombre, precio) y
   la capacidad restante. Se compra hasta la confirmacion y aparece en "Mis entradas".
-- [ ] AC4: Tras la compra, `/organizer` del dueño muestra las vendidas e ingresos actualizados. Si se agota un tipo,
+- [x] AC4: Tras la compra, `/organizer` del dueño muestra las vendidas e ingresos actualizados. Si se agota un tipo,
   la zona queda "Agotado".
-- [ ] AC5: Checkout con sesion: nombre y correo precargados; con un pedido previo del usuario tambien documento y
+- [x] AC5: Checkout con sesion: nombre y correo precargados; con un pedido previo del usuario tambien documento y
   celular. Aviso "Completamos tus datos con tu cuenta". Sin sesion: link para iniciar sesion y volver al checkout.
-- [ ] AC6: Los eventos del mock siguen prerenderizados y sin cambios. Sin hydration warnings.
-- [ ] AC7: Imagenes subidas (data URL) se ven en tarjeta, detalle, checkout, confirmacion y "Mis entradas".
-- [ ] AC8: `npm run test`, `npx tsc --noEmit`, `npm run lint` y `npm run build` sin errores.
+- [x] AC6: Los eventos del mock siguen prerenderizados y sin cambios. Sin hydration warnings.
+- [x] AC7: Imagenes subidas (data URL) se ven en tarjeta, detalle, checkout, confirmacion y "Mis entradas".
+- [x] AC8: `npm run test`, `npx tsc --noEmit`, `npm run lint` y `npm run build` sin errores.
 
 ## Tests requeridos
 - `catalog.utils.test.ts`: `slugify` (tildes, simbolos, espacios); `toCatalogEvent` (slug unico, `priceFrom`,
@@ -134,5 +134,28 @@ Ninguna bloquea. Default: el catalogo publico muestra los eventos publicados por
 
 ## Estado
 - Aprobacion humana: aprobada (2026-09-29)
-- Fase: spec
-- Log de review: -
+- Fase: implementada
+- Log de review: verificacion propia (tests, tsc, lint, build y Playwright a 375/1440). Sin hallazgos abiertos.
+- Desviaciones:
+  - **T4 no hizo falta:** `next/image` de Next 16 ya marca `data:` como `unoptimized`
+    (`next/dist/shared/lib/get-img-props.js`). No se tocaron los componentes de imagen; AC7 verificado en el navegador.
+  - **UI compartida:** `catalog/components/event-page-views.tsx` (`EventDetailView`, `EventTicketsView`,
+    `EventCheckoutView`, `EventConfirmationView`) tiene el contenido de las 4 paginas de evento. Lo usan las paginas
+    prerenderizadas y los fallbacks cliente, para no duplicar la UI.
+  - **Cupo por zona:** `VenueZone.remaining?` (opcional) limita el stepper y se muestra como "Quedan N" y
+    "N disponibles" en el mapa. `ZONE_TONES` se exporta desde `ticket` para colorear las zonas por precio.
+  - `BuyerFields` suma un prop opcional `notice` para el aviso de autocompletado y el link de login.
+  - Direccion = lugar (la UI ya agrega la ciudad; con "<lugar>, <ciudad>" la ciudad salia dos veces).
+- Verificacion:
+  - 207 tests (27 archivos) en verde; `tsc`, `lint` y `build` sin errores. Los eventos del mock siguen SSG (●).
+  - E2E a 375 y 1440 con Playwright:
+    - Publicar un evento en el panel (Arte y cultura, Arequipa, 2 tipos de entrada, portada subida).
+    - Aparece en "Proximos eventos" y en la pestaña de su categoria, en `/events` y en su filtro de ciudad.
+    - Detalle con la imagen en data URL.
+    - Tickets con "Quedan 3"; el cuarto "+" queda deshabilitado.
+    - Checkout con nombre y correo precargados y el aviso; pago y confirmacion; "Mis entradas".
+    - El panel muestra 3 vendidas y S/ 360; la zona queda "Agotado".
+    - Un segundo checkout precarga documento y celular.
+    - Un slug inexistente muestra "No encontramos este evento".
+    - Sin sesion aparece el link de login con `redirect` al checkout.
+    - Sin scroll horizontal ni hydration warnings.

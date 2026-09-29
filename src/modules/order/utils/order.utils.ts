@@ -1,3 +1,4 @@
+import type { AuthUser } from "@/modules/auth";
 import type { EventEntity } from "@/modules/event";
 
 import { PAYMENT_METHOD_OPTIONS } from "../constants/order.constants";
@@ -129,4 +130,25 @@ export function getUserOrders(orders: readonly Order[], email: string): Order[] 
       order.accountEmail?.toLowerCase() === normalized ||
       order.buyer.email.trim().toLowerCase() === normalized,
   );
+}
+
+// Datos del comprador para autocompletar el checkout: nombre y correo de la cuenta, y documento y
+// celular del ultimo pedido del usuario (si tiene alguno).
+export function getCheckoutPrefill(
+  user: AuthUser | null,
+  orders: readonly Order[],
+): Partial<CheckoutFormValues> {
+  if (!user) return {};
+  const lastOrder = getUserOrders(orders, user.email).sort(
+    (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+  )[0];
+  return {
+    fullName: user.fullName,
+    email: user.email,
+    ...(lastOrder && {
+      documentType: lastOrder.buyer.documentType,
+      documentNumber: lastOrder.buyer.documentNumber,
+      phone: lastOrder.buyer.phone,
+    }),
+  };
 }
