@@ -162,25 +162,25 @@ src/app/(main)/dev/storage/page.tsx
 Orden: T1 → T2 → [T3 ‖ T4 ‖ T5] → T6. ~28 archivos.
 
 ## Criterios de aceptacion
-- [ ] AC1: Registrarse con un correo nuevo crea la cuenta e inicia sesion. Registrarse de nuevo con el mismo correo
+- [x] AC1: Registrarse con un correo nuevo crea la cuenta e inicia sesion. Registrarse de nuevo con el mismo correo
   muestra "Ya existe una cuenta con ese correo". `localStorage` guarda el hash, nunca la contraseña.
-- [ ] AC2: Login con correo desconocido / contraseña incorrecta / cuenta solo Google muestra el error correcto bajo
+- [x] AC2: Login con correo desconocido / contraseña incorrecta / cuenta solo Google muestra el error correcto bajo
   el campo que corresponde. `demo@ticketera.pe` / `Demo1234` entra.
-- [ ] AC3: Sin `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: "Continuar con Google" abre el selector simulado. Elegir una cuenta
+- [x] AC3: Sin `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: "Continuar con Google" abre el selector simulado. Elegir una cuenta
   inicia sesion (crea la cuenta Google si no existia) y respeta `?redirect=`.
 - [ ] AC4: Con `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: se muestra el boton oficial de Google y un login exitoso inicia sesion
   con el nombre y correo de la cuenta de Google. Verificable por el usuario con su Client ID; no se puede probar en
   este entorno.
-- [ ] AC5: `/forgot-password` con cualquier correo muestra el mismo mensaje. Con un correo registrado aparece un
+- [x] AC5: `/forgot-password` con cualquier correo muestra el mismo mensaje. Con un correo registrado aparece un
   correo en `/dev/inbox` con el link de reseteo.
-- [ ] AC6: El link lleva a `/reset-password?token=...`. La nueva contraseña (validada y confirmada) reemplaza la
+- [x] AC6: El link lleva a `/reset-password?token=...`. La nueva contraseña (validada y confirmada) reemplaza la
   anterior: la vieja deja de funcionar y la nueva entra. Reusar el link muestra "El enlace no es valido o expiro".
   Un token expirado (> 30 min) tambien.
-- [ ] AC7: `/dev/storage` lista las claves `ticketera-*` con tamaño y JSON. "Borrar" elimina una clave y
+- [x] AC7: `/dev/storage` lista las claves `ticketera-*` con tamaño y JSON. "Borrar" elimina una clave y
   "Reiniciar datos de prueba" deja la app como nueva (sin sesion, pedidos ni eventos creados).
-- [ ] AC8: La seleccion de entradas sobrevive a cerrar el navegador (`localStorage`).
-- [ ] AC9: Sin scroll horizontal en 375/1440; labels asociados, foco visible; sin hydration warnings.
-- [ ] AC10: `npm run test`, `npx tsc --noEmit`, `npm run lint` y `npm run build` sin errores.
+- [x] AC8: La seleccion de entradas sobrevive a cerrar el navegador (`localStorage`).
+- [x] AC9: Sin scroll horizontal en 375/1440; labels asociados, foco visible; sin hydration warnings.
+- [x] AC10: `npm run test`, `npx tsc --noEmit`, `npm run lint` y `npm run build` sin errores.
 
 ## Tests requeridos
 - `dev-mail.store.test.ts`: enviar correo; token valido/expirado/usado; `consumeResetToken` de un solo uso.
@@ -198,5 +198,18 @@ Orden: T1 → T2 → [T3 ‖ T4 ‖ T5] → T6. ~28 archivos.
 
 ## Estado
 - Aprobacion humana: aprobada (2026-09-29)
-- Fase: spec
-- Log de review: -
+- Fase: implementada
+- Log de review: verificacion propia (tests, tsc, lint, build y Playwright a 375/1440). Sin hallazgos abiertos.
+- Desviaciones:
+  - `DEV_INBOX_PATH` vive en el modulo `dev` (dueño de la bandeja) y `auth` lo importa, en vez de definirlo en
+    `auth.utils`.
+  - "Reiniciar datos de prueba" hace una recarga completa (`window.location.assign("/")`) a proposito, para que los
+    stores de zustand en memoria tambien vuelvan a su estado inicial.
+- Verificacion:
+  - 196 tests (26 archivos) en verde; `tsc`, `lint` y `build` sin errores.
+  - E2E a 375 y 1440: errores de login (correo desconocido, contraseña incorrecta, cuenta solo Google), registro
+    (hash en `localStorage`, sin la contraseña en texto plano) y duplicado, "olvide mi contraseña" → bandeja →
+    reset (confirmacion que no coincide, exito, reuso rechazado, la contraseña vieja falla y la nueva entra), Google
+    simulado con `?redirect=`, panel de datos (borrar una clave, reiniciar deja `localStorage` vacio). Sin scroll
+    horizontal ni hydration warnings.
+  - AC4 (Google real) queda para que el usuario lo pruebe con su Client ID: en este entorno no hay uno.

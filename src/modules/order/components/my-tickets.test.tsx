@@ -18,7 +18,7 @@ vi.mock("next/navigation", () => ({
 beforeEach(() => {
   replace.mockClear();
   currentSearch = "";
-  useAuthStore.setState({ user: null, knownUsers: [] });
+  useAuthStore.setState({ user: null });
   useOrderStore.setState({ orders: [], lastOrderNumber: null });
 });
 

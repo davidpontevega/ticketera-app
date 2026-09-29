@@ -46,7 +46,7 @@ export function TicketSelection({ event, layout }: TicketSelectionProps) {
     startSelection(event.id);
   }, [event.id, startSelection]);
 
-  // El store se persiste en localStorage/sessionStorage: antes de hidratar (isClient) se renderiza vacio
+  // El store se persiste en localStorage: antes de hidratar (isClient) se renderiza vacio
   // igual que el HTML estatico, y se ignora la seleccion que sea de otro evento.
   const isCurrentEvent = isClient && eventId === event.id;
   const activeZone = isCurrentEvent

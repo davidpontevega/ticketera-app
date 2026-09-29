@@ -58,7 +58,7 @@ export function CheckoutForm({ event, layout }: CheckoutFormProps) {
   const ticketsHref = `${eventHref}/tickets`;
   const lines = isClient && eventId === event.id ? getTicketLines(layout, quantities, seatIds) : [];
 
-  // Antes de hidratar no se conoce la seleccion guardada en sessionStorage.
+  // Antes de hidratar no se conoce la seleccion guardada en localStorage.
   if (!isClient) {
     return <div aria-busy className="h-96 animate-pulse rounded-2xl bg-card" />;
   }

@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { getAuthHref, getInitials, getNameFromEmail, getSafeRedirect } from "./auth.utils";
+import {
+  decodeGoogleCredential,
+  getAuthHref,
+  getInitials,
+  getNameFromEmail,
+  getSafeRedirect,
+  hashPassword,
+} from "./auth.utils";
+
+function fakeJwt(payload: object): string {
+  const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${encode({ alg: "RS256" })}.${encode(payload)}.firma`;
+}
 
 describe("getSafeRedirect", () => {
   it("accepts internal paths", () => {
@@ -39,5 +51,36 @@ describe("getAuthHref", () => {
     expect(getAuthHref("/register", "/my-tickets")).toBe("/register?redirect=%2Fmy-tickets");
     expect(getAuthHref("/login", "/")).toBe("/login");
     expect(getAuthHref("/login", "https://evil.com")).toBe("/login");
+  });
+});
+
+describe("hashPassword", () => {
+  it("is deterministic, normalizes the email and depends on it", async () => {
+    const hash = await hashPassword("Maria@Example.com ", "secreto123");
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(await hashPassword("maria@example.com", "secreto123")).toBe(hash);
+    expect(await hashPassword("otra@example.com", "secreto123")).not.toBe(hash);
+  });
+});
+
+describe("decodeGoogleCredential", () => {
+  it("reads name and email from the ID token", () => {
+    expect(
+      decodeGoogleCredential(
+        fakeJwt({ email: "Ana@Gmail.com", email_verified: true, name: "Ana Núñez" }),
+      ),
+    ).toEqual({ email: "ana@gmail.com", fullName: "Ana Núñez" });
+  });
+
+  it("falls back to the email for the name", () => {
+    expect(decodeGoogleCredential(fakeJwt({ email: "juan.torres@gmail.com" }))?.fullName).toBe(
+      "Juan Torres",
+    );
+  });
+
+  it("rejects invalid or unverified tokens", () => {
+    expect(decodeGoogleCredential("no-es-un-jwt")).toBeNull();
+    expect(decodeGoogleCredential("a.@@@.b")).toBeNull();
+    expect(decodeGoogleCredential(fakeJwt({ email: "a@b.com", email_verified: false }))).toBeNull();
   });
 });

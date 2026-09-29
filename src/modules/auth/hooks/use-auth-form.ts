@@ -13,7 +13,8 @@ export interface UseAuthFormOptions<T> {
   validate: (values: T) => FormErrors<T>;
   fieldOrder: readonly (keyof T & string)[];
   getFieldId: (field: keyof T & string) => string;
-  onValid: (values: T) => void;
+  // Puede devolver errores (ej. "contraseña incorrecta") para mostrarlos en el formulario.
+  onValid: (values: T) => void | FormErrors<T> | Promise<void | FormErrors<T>>;
 }
 
 // Formulario controlado: errores en vivo despues del primer envio, foco al primer error
@@ -48,7 +49,14 @@ export function useAuthForm<T>({
       return;
     }
     setIsSubmitting(true);
-    setTimeout(() => onValid(values), SUBMIT_DELAY_MS);
+    setTimeout(async () => {
+      const submitErrors = await onValid(values);
+      if (!submitErrors || Object.keys(submitErrors).length === 0) return;
+      setErrors(submitErrors);
+      setIsSubmitting(false);
+      const firstSubmitError = fieldOrder.find((field) => submitErrors[field]);
+      if (firstSubmitError) focusFormField(getFieldId(firstSubmitError));
+    }, SUBMIT_DELAY_MS);
   };
 
   return { values, errors, isSubmitting, setValue, handleSubmit };

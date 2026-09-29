@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
@@ -16,8 +17,10 @@ import { REGISTER_FORM_DEFAULT, validateRegister } from "../schemas/auth.schema"
 import { useAuthStore } from "../store/auth.store";
 import type { RegisterFormValues } from "../types/auth.types";
 import { getAuthHref, getSafeRedirect } from "../utils/auth.utils";
+import { AuthDivider } from "./auth-divider";
 import { AuthSignedIn } from "./auth-signed-in";
 import { AuthTabs } from "./auth-tabs";
+import { GoogleSignInButton } from "./google-sign-in-button";
 
 const getFieldId = (field: keyof RegisterFormValues) => `register-${field}`;
 
@@ -28,19 +31,23 @@ export function RegisterForm() {
   const isClient = useIsClient();
   const user = useAuthStore((state) => state.user);
   const register = useAuthStore((state) => state.register);
+  const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const { values, errors, isSubmitting, setValue, handleSubmit } = useAuthForm({
     initialValues: REGISTER_FORM_DEFAULT,
     validate: validateRegister,
     fieldOrder: ["fullName", "email", "password", "acceptedTerms"],
     getFieldId,
-    onValid: ({ fullName, email }) => {
-      register({ fullName, email });
+    onValid: async ({ fullName, email, password }) => {
+      const result = await register({ fullName, email, password });
+      if (!result.ok) return { [result.field]: result.message };
+      setIsRedirecting(true);
       router.replace(redirectHref);
     },
   });
 
-  if (isClient && user && !isSubmitting) {
+  if (isClient && user && !isSubmitting && !isRedirecting) {
     return <AuthSignedIn user={user} redirectHref={redirectHref} />;
   }
 
@@ -49,6 +56,15 @@ export function RegisterForm() {
   return (
     <>
       <AuthTabs current="/register" />
+      <GoogleSignInButton
+        mode="signup"
+        onSuccess={(profile) => {
+          setIsRedirecting(true);
+          loginWithGoogle(profile);
+          router.replace(redirectHref);
+        }}
+      />
+      <AuthDivider label="o con tu correo" />
       <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div className="flex flex-col gap-1">
           <h1 className="font-heading text-3xl font-bold tracking-tight">Crea tu cuenta</h1>

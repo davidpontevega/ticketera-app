@@ -23,8 +23,8 @@ const INITIAL_SELECTION = {
   seatIds: {},
 } satisfies Pick<TicketSelectionState, "eventId" | "activeZoneId" | "quantities" | "seatIds">;
 
-// Persistido en sessionStorage: la seleccion sobrevive a un refresh del checkout,
-// se pierde al cerrar la pestaña y no se mezcla entre pestañas.
+// Persistido en localStorage (datos de prueba, spec 016): la seleccion sobrevive a un refresh
+// del checkout y a cerrar el navegador. Se ve y se borra en /dev/storage.
 export const useTicketSelectionStore = create<TicketSelectionState>()(
   persist(
     (set) => ({
@@ -57,7 +57,7 @@ export const useTicketSelectionStore = create<TicketSelectionState>()(
     }),
     {
       name: "ticketera-ticket-selection",
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
       partialize: ({ eventId, activeZoneId, quantities, seatIds }) => ({
         eventId,
         activeZoneId,
