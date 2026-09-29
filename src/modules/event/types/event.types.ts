@@ -28,6 +28,10 @@ export interface EventEntity {
   isFeatured: boolean; // se muestra en el hero
   isTrending: boolean; // se muestra en la seccion de tendencias
   isBestSeller: boolean; // se muestra en el ranking de mas vendidos
+  description: string; // texto de "Acerca del evento"
+  address: string; // "Av. Jose Diaz s/n, Cercado de Lima"
+  doorsOpen: string; // ISO 8601, apertura de puertas (antes de `date`)
+  minAge: number | null; // null = apto para todo publico
 }
 
 export type EventCategoryFilter = EventCategory | "all";

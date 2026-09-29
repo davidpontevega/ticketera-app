@@ -2,6 +2,7 @@
 
 import { Heart } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,7 @@ import {
   formatEventDateBadge,
   formatEventPrice,
   getEventCategoryOption,
+  getEventHref,
 } from "../utils/event.utils";
 
 export interface EventCardProps {
@@ -33,8 +35,8 @@ export function EventCard({ event, className }: EventCardProps) {
         className,
       )}
     >
-      <a href="#" aria-label={event.title} className="absolute inset-0 z-0" />
-      <div className="relative z-10 aspect-video">
+      <Link href={getEventHref(event.slug)} aria-label={event.title} className="absolute inset-0 z-0" />
+      <div className="pointer-events-none relative z-10 aspect-video">
         <Image
           src={event.imageUrl}
           alt={event.title}
@@ -51,7 +53,7 @@ export function EventCard({ event, className }: EventCardProps) {
           className="absolute right-2 top-2"
         />
       </div>
-      <CardContent className="relative z-10 flex flex-col gap-1">
+      <CardContent className="pointer-events-none relative z-10 flex flex-col gap-1">
         <p className={cn("text-sm font-medium", categoryOption.labelClassName)}>
           {categoryOption.label}
         </p>
@@ -65,7 +67,7 @@ export function EventCard({ event, className }: EventCardProps) {
             type="button"
             aria-label="Agregar a favoritos"
             onClick={(e) => e.preventDefault()}
-            className="cursor-pointer text-muted-foreground hover:text-destructive"
+            className="pointer-events-auto cursor-pointer text-muted-foreground hover:text-destructive"
           >
             <Heart className="size-5" />
           </button>

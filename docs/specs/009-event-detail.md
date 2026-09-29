@@ -201,6 +201,17 @@ Orden: T1 → T2 → [T3 ‖ T4 ‖ T5] → T6. ~19 archivos (6 son tests/tipos/
   (descripcion, direccion, edad) inventados por evento.
 
 ## Estado
-- Aprobacion humana: pendiente
-- Fase: spec
+- Aprobacion humana: aprobada (2026-09-29)
+- Fase: implementado (pendiente de review humano)
+- Desviaciones menores durante el desarrollo:
+  - `breadcrumb.tsx` generado desde el fuente oficial de shadcn (`apps/v4/registry/bases/base/ui/breadcrumb.tsx` +
+    clases de `style-nova.css`), igual a lo que instala el CLI: el registro `ui.shadcn.com` esta bloqueado en el entorno.
+  - `EventDetailHero` recibe tambien `ticketsHref` (el modulo event no conoce la ruta de entradas).
+  - Helper nuevo `getEventHref(slug)` en `event.utils.ts`, usado por card, hero, tendencias, detalle y seleccion (DRY).
+  - Fix en `EventCard`: imagen y contenido con `pointer-events-none` (el favorito con `pointer-events-auto`); antes
+    tapaban el link overlay y el click en la card no navegaba.
+  - Test existente de `formatEventDateBadge` usa una fecha fija en hora de Lima (fallaba con `TZ=Asia/Tokyo`).
+- Verificacion: 78 tests (tambien con `TZ` UTC, Asia/Tokyo, America/Lima, Pacific/Honolulu), `tsc`, `lint` y `build`
+  OK; en Chromium: 1440px y 375px, detalle -> entradas -> volver, evento agotado, links de la landing, 404, sin
+  scroll horizontal ni errores de hidratacion con el navegador en Asia/Tokyo y Pacific/Honolulu.
 - Log de review: -

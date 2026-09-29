@@ -10,6 +10,12 @@ export type { EventAvailabilityBadgeProps } from "./components/event-availabilit
 export type { EventCardProps } from "./components/event-card";
 export { TrendingSidebar } from "./components/trending-sidebar";
 export type { TrendingSidebarProps } from "./components/trending-sidebar";
+export { EventDetailHero } from "./components/event-detail-hero";
+export type { EventDetailHeroProps } from "./components/event-detail-hero";
+export { EventDetailInfo } from "./components/event-detail-info";
+export type { EventDetailInfoProps } from "./components/event-detail-info";
+export { RelatedEvents } from "./components/related-events";
+export type { RelatedEventsProps } from "./components/related-events";
 export { BestSellerEvents } from "./components/best-seller-events";
 export type { BestSellerEventsProps } from "./components/best-seller-events";
 
@@ -21,8 +27,12 @@ export {
   getTrendingEvents,
   getBestSellerEvents,
   getEventBySlug,
+  getEventHref,
+  getRelatedEvents,
   formatEventDate,
   formatEventPrice,
+  formatEventLongDate,
+  formatEventTime,
 } from "./utils/event.utils";
 
 export {
@@ -30,6 +40,7 @@ export {
   EVENT_AVAILABILITY_LABEL,
   EVENT_LOCALE,
   EVENT_CURRENCY,
+  EVENT_TIME_ZONE,
 } from "./constants/event.constants";
 
 export type {

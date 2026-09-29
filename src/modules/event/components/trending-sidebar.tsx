@@ -1,8 +1,9 @@
 import type { JSX } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 import type { EventEntity } from "../types/event.types";
-import { formatEventDate } from "../utils/event.utils";
+import { formatEventDate, getEventHref } from "../utils/event.utils";
 
 export interface TrendingSidebarProps {
   events: readonly EventEntity[];
@@ -22,8 +23,8 @@ export function TrendingSidebar({ events }: TrendingSidebarProps): JSX.Element |
       <ul className="mt-3 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
         {events.map((event) => (
           <li key={event.id}>
-            <a
-              href="#upcoming-events"
+            <Link
+              href={getEventHref(event.slug)}
               className="flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div className="relative size-16 shrink-0">
@@ -41,7 +42,7 @@ export function TrendingSidebar({ events }: TrendingSidebarProps): JSX.Element |
                   {formatEventDate(event.date)}
                 </span>
               </div>
-            </a>
+            </Link>
           </li>
         ))}
       </ul>

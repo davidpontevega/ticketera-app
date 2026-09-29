@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { PurchaseHeader } from "@/components/shared/purchase-header";
-import { EVENTS_MOCK, formatEventDate, getEventBySlug } from "@/modules/event";
+import { EVENTS_MOCK, formatEventDate, getEventBySlug, getEventHref } from "@/modules/event";
 import { TicketSelection, getVenueLayout } from "@/modules/ticket";
 
 export function generateStaticParams() {
@@ -16,7 +16,7 @@ export default async function TicketsPage({ params }: PageProps<"/events/[slug]/
   const event = getEventBySlug(EVENTS_MOCK, slug);
   if (!event) notFound();
 
-  const eventHref = `/events/${event.slug}`;
+  const eventHref = getEventHref(event.slug);
 
   return (
     <>

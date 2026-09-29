@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { CalendarDays, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import { Swiper, SwiperSlide, type SwiperClass } from "swiper/react";
 import { A11y, Keyboard, Pagination } from "swiper/modules";
@@ -12,7 +13,7 @@ import "swiper/css/pagination";
 import { Button } from "@/components/ui/button";
 
 import type { EventEntity } from "../types/event.types";
-import { formatEventDate } from "../utils/event.utils";
+import { formatEventDate, getEventHref } from "../utils/event.utils";
 
 export interface HeroCarouselProps {
   events: readonly EventEntity[];
@@ -78,7 +79,7 @@ export function HeroCarousel({ events }: HeroCarouselProps) {
                 </div>
                 <Button
                   className="pointer-events-auto w-fit"
-                  render={<a href="#upcoming-events" />}
+                  render={<Link href={getEventHref(event.slug)} />}
                   nativeButton={false}
                 >
                   Comprar entradas

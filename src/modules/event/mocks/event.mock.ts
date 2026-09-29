@@ -15,6 +15,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "available",
     isFeatured: true,
     isTrending: false,
+    description:
+      "Bad Bunny llega a Lima con su gira mundial: mas de dos horas de show con sus mayores exitos, pantallas gigantes y efectos especiales. La entrada incluye acceso a la zona elegida y a las activaciones del estadio.",
+    address: "Av. Jose Diaz s/n, Cercado de Lima",
+    doorsOpen: "2026-11-14T18:00:00-05:00",
+    minAge: null,
     isBestSeller: true,
   },
   {
@@ -31,6 +36,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "few-left",
     isFeatured: true,
     isTrending: true,
+    description:
+      "Coldplay presenta Music of the Spheres, un show de dos horas con pulseras LED interactivas, confeti y un escenario pensado para ser sostenible. Las pulseras se entregan en el ingreso.",
+    address: "Av. Venezuela 3400, Cercado de Lima",
+    doorsOpen: "2026-12-05T17:30:00-05:00",
+    minAge: null,
     isBestSeller: false,
   },
   {
@@ -47,6 +57,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "available",
     isFeatured: true,
     isTrending: false,
+    description:
+      "La seleccion peruana recibe a Brasil por las Eliminatorias al Mundial. Vive los 90 minutos desde la tribuna con el mejor ambiente. Ingreso solo con entrada digital y documento de identidad.",
+    address: "Av. Jose Diaz s/n, Cercado de Lima",
+    doorsOpen: "2026-10-10T16:00:00-05:00",
+    minAge: null,
     isBestSeller: true,
   },
   {
@@ -63,6 +78,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "available",
     isFeatured: false,
     isTrending: true,
+    description:
+      "La gran final de la Copa Libertadores se juega en Lima. Un partido unico con show previo de apertura y ceremonia de premiacion al finalizar.",
+    address: "Av. Javier Prado Este s/n, Ate",
+    doorsOpen: "2026-11-29T13:00:00-05:00",
+    minAge: null,
     isBestSeller: false,
   },
   {
@@ -79,6 +99,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "available",
     isFeatured: false,
     isTrending: true,
+    description:
+      "El musical mas longevo de Broadway llega al Gran Teatro Nacional con orquesta en vivo, vestuario original y una puesta en escena de dos horas y media con intermedio.",
+    address: "Av. Javier Prado Este 2225, San Borja",
+    doorsOpen: "2026-09-30T19:00:00-05:00",
+    minAge: 12,
     isBestSeller: false,
   },
   {
@@ -95,6 +120,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "sold-out",
     isFeatured: false,
     isTrending: false,
+    description:
+      "La tragedia de Shakespeare en una version contemporanea, con elenco nacional y musica original. Funcion de dos horas sin intermedio.",
+    address: "Jr. Ica 377, Cercado de Lima",
+    doorsOpen: "2026-10-18T18:30:00-05:00",
+    minAge: 14,
     isBestSeller: true,
   },
   {
@@ -111,6 +141,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "available",
     isFeatured: true,
     isTrending: false,
+    description:
+      "El festival de rock latino mas grande de la region vuelve a la Costa Verde con mas de 20 bandas en tres escenarios durante todo el dia. Incluye zona de comidas y activaciones.",
+    address: "Circuito de Playas Costa Verde, Miraflores",
+    doorsOpen: "2027-03-14T12:00:00-05:00",
+    minAge: 18,
     isBestSeller: true,
   },
   {
@@ -127,6 +162,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "available",
     isFeatured: false,
     isTrending: true,
+    description:
+      "Musica electronica, arte y naturaleza en la selva central. Un fin de semana con artistas nacionales e internacionales, zona de camping y experiencias al aire libre.",
+    address: "Carretera Central km 3, Villa Rica, Oxapampa",
+    doorsOpen: "2027-07-10T11:00:00-05:00",
+    minAge: 18,
     isBestSeller: false,
   },
   {
@@ -143,6 +183,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "few-left",
     isFeatured: false,
     isTrending: false,
+    description:
+      "Los personajes de Disney patinan sobre hielo en un espectaculo para toda la familia, con musica, luces y coreografias de sus peliculas favoritas. Duracion aproximada de 2 horas.",
+    address: "Av. El Derby s/n, Santiago de Surco",
+    doorsOpen: "2026-12-20T14:30:00-05:00",
+    minAge: null,
     isBestSeller: true,
   },
   {
@@ -159,6 +204,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "available",
     isFeatured: false,
     isTrending: true,
+    description:
+      "George Lopez presenta su nuevo show de stand-up en espanol e ingles, con humor sobre familia, cultura latina y la vida en Estados Unidos. Hora y media de comedia.",
+    address: "Av. Arqueologia 206, San Borja",
+    doorsOpen: "2026-11-02T20:00:00-05:00",
+    minAge: 18,
     isBestSeller: false,
   },
   {
@@ -175,6 +225,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "available",
     isFeatured: false,
     isTrending: false,
+    description:
+      "Una noche dedicada a los clasicos del cine en pantalla grande: doble funcion con peliculas restauradas, conversatorio con criticos y canchita incluida.",
+    address: "Av. El Cafetal 381, Arequipa",
+    doorsOpen: "2026-11-06T18:30:00-05:00",
+    minAge: null,
     isBestSeller: false,
   },
   {
@@ -191,6 +246,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "available",
     isFeatured: false,
     isTrending: false,
+    description:
+      "Exposicion colectiva de artistas contemporaneos del norte del pais, con pintura, escultura e instalaciones. Recorridos guiados cada hora.",
+    address: "Av. Jose Balta 850, Chiclayo",
+    doorsOpen: "2026-10-24T17:30:00-05:00",
+    minAge: null,
     isBestSeller: false,
   },
   {
@@ -207,6 +267,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "available",
     isFeatured: false,
     isTrending: false,
+    description:
+      "La feria del libro mas grande del sur del pais, con editoriales nacionales e internacionales, presentaciones de autores, talleres y zona infantil.",
+    address: "Av. De la Cultura 1200, Cusco",
+    doorsOpen: "2026-11-15T09:30:00-05:00",
+    minAge: null,
     isBestSeller: true,
   },
   {
@@ -223,6 +288,11 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     availability: "few-left",
     isFeatured: false,
     isTrending: true,
+    description:
+      "Dos dias de conferencias sobre tecnologia, innovacion y negocios con speakers internacionales, talleres practicos y networking. Incluye kit y coffee break.",
+    address: "Av. Sanchez Cerro 1250, Piura",
+    doorsOpen: "2026-12-03T08:00:00-05:00",
+    minAge: 18,
     isBestSeller: false,
   },
 ];

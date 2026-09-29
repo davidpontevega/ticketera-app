@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import type { EventEntity } from "@/modules/event";
+import { getEventHref, type EventEntity } from "@/modules/event";
 
 import { TICKET_MAX_PER_ZONE } from "../constants/ticket.constants";
 import { useTicketSelectionStore } from "../store/ticket-selection.store";
@@ -74,7 +74,7 @@ export function TicketSelection({ event, layout }: TicketSelectionProps) {
           onQuantityChange={setQuantity}
         />
       </div>
-      <PurchaseSummary lines={lines} checkoutHref={`/events/${event.slug}/checkout`} />
+      <PurchaseSummary lines={lines} checkoutHref={`${getEventHref(event.slug)}/checkout`} />
     </div>
   );
 }

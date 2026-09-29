@@ -1,6 +1,11 @@
 import { endOfDay, startOfDay } from "date-fns";
 
-import { EVENT_CATEGORIES, EVENT_CURRENCY, EVENT_LOCALE } from "../constants/event.constants";
+import {
+  EVENT_CATEGORIES,
+  EVENT_CURRENCY,
+  EVENT_LOCALE,
+  EVENT_TIME_ZONE,
+} from "../constants/event.constants";
 import type {
   EventCategory,
   EventCategoryFilter,
@@ -29,6 +34,10 @@ export function getTrendingEvents(events: readonly EventEntity[]): EventEntity[]
 
 export function getBestSellerEvents(events: readonly EventEntity[]): EventEntity[] {
   return events.filter((event) => event.isBestSeller);
+}
+
+export function getEventHref(slug: string): string {
+  return `/events/${slug}`;
 }
 
 export function getEventBySlug(
@@ -62,12 +71,12 @@ export interface EventDateBadgeParts {
 export function formatEventDateBadge(isoDate: string): EventDateBadgeParts {
   const date = new Date(isoDate);
   const month = normalizeSpaces(
-    new Intl.DateTimeFormat(EVENT_LOCALE, { month: "short" }).format(date),
+    new Intl.DateTimeFormat(EVENT_LOCALE, { month: "short", timeZone: EVENT_TIME_ZONE }).format(date),
   )
     .replace(/\.$/, "")
     .toLowerCase();
   const day = normalizeSpaces(
-    new Intl.DateTimeFormat(EVENT_LOCALE, { day: "numeric" }).format(date),
+    new Intl.DateTimeFormat(EVENT_LOCALE, { day: "numeric", timeZone: EVENT_TIME_ZONE }).format(date),
   );
   return { month, day };
 }
@@ -79,8 +88,49 @@ export function formatEventDate(isoDate: string): string {
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: EVENT_TIME_ZONE,
   }).format(new Date(isoDate));
   return normalizeSpaces(formatted);
+}
+
+export function formatEventLongDate(isoDate: string): string {
+  const formatted = new Intl.DateTimeFormat(EVENT_LOCALE, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: EVENT_TIME_ZONE,
+  }).format(new Date(isoDate));
+  return normalizeSpaces(formatted);
+}
+
+export function formatEventTime(isoDate: string): string {
+  const formatted = new Intl.DateTimeFormat(EVENT_LOCALE, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: EVENT_TIME_ZONE,
+  }).format(new Date(isoDate));
+  return normalizeSpaces(formatted);
+}
+
+export function formatEventMinAge(minAge: number | null): string {
+  return minAge === null ? "Todo publico" : `+${minAge} años`;
+}
+
+export function getRelatedEvents(
+  events: readonly EventEntity[],
+  event: EventEntity,
+  limit = 4,
+): EventEntity[] {
+  const others = events.filter((item) => item.id !== event.id);
+  const sameCategory = others.filter((item) => item.category === event.category);
+  const otherCategories = others.filter((item) => item.category !== event.category);
+  return [...sameCategory, ...otherCategories].slice(0, limit);
+}
+
+export function getEventMapsUrl(event: EventEntity): string {
+  const query = encodeURIComponent(`${event.venue}, ${event.address}, ${event.city}`);
+  return `https://www.google.com/maps/search/?api=1&query=${query}`;
 }
 
 export function formatEventPrice(amount: number): string {

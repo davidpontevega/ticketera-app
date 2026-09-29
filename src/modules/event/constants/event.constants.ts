@@ -109,6 +109,9 @@ export const EVENT_AVAILABILITY_LABEL: Record<EventAvailability, string> = {
 
 export const EVENT_LOCALE = "es-PE";
 export const EVENT_CURRENCY = "PEN";
+// Los eventos son en Peru: las fechas se muestran siempre en hora de Lima,
+// sin importar la zona horaria del servidor (build) o del navegador.
+export const EVENT_TIME_ZONE = "America/Lima";
 
 export const EVENT_PRICE_RANGE: EventPriceRange = [0, 500];
 export const EVENT_PRICE_STEP = 10;

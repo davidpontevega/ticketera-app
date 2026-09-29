@@ -2,7 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { EVENTS_MOCK } from "../mocks/event.mock";
-import { formatEventDateBadge, getEventCategoryOption } from "../utils/event.utils";
+import { formatEventDateBadge, getEventCategoryOption, getEventHref } from "../utils/event.utils";
 import { EventCard } from "./event-card";
 
 const soldOutEvent = EVENTS_MOCK.find((event) => event.availability === "sold-out")!;
@@ -32,5 +32,12 @@ describe("EventCard", () => {
 
     expect(screen.getByText(categoryLabel)).toBeTruthy();
     expect(screen.getByText(day)).toBeTruthy();
+  });
+
+  it("links to the event detail page", () => {
+    render(<EventCard event={availableEvent} />);
+
+    const link = screen.getByRole("link", { name: availableEvent.title });
+    expect(link.getAttribute("href")).toBe(getEventHref(availableEvent.slug));
   });
 });
