@@ -19,6 +19,7 @@ import {
   formatEventTime,
   getEventCategoryOption,
 } from "../utils/event.utils";
+import { getEventSearchHref } from "../utils/event-search.utils";
 import { EventDetailActions } from "./event-detail-actions";
 
 export interface EventDetailHeroProps {
@@ -44,7 +45,11 @@ export function EventDetailHero({ event, ticketsHref }: EventDetailHeroProps) {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbLink render={<Link href="/#upcoming-events" />}>{category.label}</BreadcrumbLink>
+            <BreadcrumbLink
+              render={<Link href={getEventSearchHref({ categories: [event.category] })} />}
+            >
+              {category.label}
+            </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator className="hidden sm:inline-flex" />
           <BreadcrumbItem className="hidden sm:inline-flex">

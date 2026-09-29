@@ -15,7 +15,10 @@ import type {
   EventAvailability,
   EventCategoryOption,
   EventFilters,
+  EventPriceBucket,
   EventPriceRange,
+  EventSearchParams,
+  EventSortOption,
 } from "../types/event.types";
 
 export const EVENT_CATEGORIES: readonly EventCategoryOption[] = [
@@ -121,4 +124,32 @@ export const EVENT_FILTERS_DEFAULT: EventFilters = {
   category: "all",
   dateRange: undefined,
   priceRange: EVENT_PRICE_RANGE,
+};
+
+export interface EventPriceBucketOption {
+  value: EventPriceBucket;
+  label: string;
+  min: number; // exclusivo
+  max: number; // inclusivo
+}
+
+export const EVENT_PRICE_BUCKETS: readonly EventPriceBucketOption[] = [
+  { value: "up-to-50", label: "Hasta S/ 50", min: -Infinity, max: 50 },
+  { value: "50-150", label: "S/ 50 – 150", min: 50, max: 150 },
+  { value: "150-300", label: "S/ 150 – 300", min: 150, max: 300 },
+  { value: "over-300", label: "Mas de S/ 300", min: 300, max: Infinity },
+];
+
+export const EVENT_SORT_OPTIONS: readonly { value: EventSortOption; label: string }[] = [
+  { value: "date", label: "Fecha" },
+  { value: "price", label: "Precio mas bajo" },
+];
+
+export const EVENT_SEARCH_DEFAULT: EventSearchParams = {
+  query: "",
+  categories: [],
+  cities: [],
+  month: null,
+  price: null,
+  sort: "date",
 };

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sheet"
 
 const NAV_LINKS = [
-  { href: "#upcoming-events", label: "Eventos" },
+  { href: "/events", label: "Eventos" },
   { href: "#", label: "Categorias" },
 ] as const
 

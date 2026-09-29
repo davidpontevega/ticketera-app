@@ -52,7 +52,7 @@ export default async function EventDetailPage({ params }: PageProps<"/events/[sl
           />
         </div>
       </div>
-      <RelatedEvents events={getRelatedEvents(EVENTS_MOCK, event)} />
+      <RelatedEvents events={getRelatedEvents(EVENTS_MOCK, event)} category={event.category} />
     </div>
   );
 }

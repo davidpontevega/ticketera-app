@@ -185,6 +185,19 @@ Ninguna bloquea. Defaults tomados, ajustables al aprobar:
 - Contadores no facetados (como el board).
 
 ## Estado
-- Aprobacion humana: pendiente
-- Fase: spec
+- Aprobacion humana: aprobada (2026-09-29)
+- Fase: implementado (pendiente de review humano)
+- Desviaciones menores durante el desarrollo:
+  - Helper extra `getEventSearchHref(overrides)` + `EVENT_SEARCH_PATH` en `event-search.utils.ts` (con test), usado
+    por el contenedor y los links (header usa `/events` directo).
+  - `EventSearchFilters` recibe `idPrefix`: el aside desktop y el sheet mobile pueden estar en el DOM a la vez.
+  - "Limpiar filtros"/"Limpiar todo" limpian texto y filtros pero conservan el orden elegido; "Limpiar" del
+    aside/sheet limpia solo los filtros del panel.
+  - `EmptyState` suma `titleAs` (`h1` por defecto, `h2` en `/events`, que ya tiene su `h1`).
+  - Etiqueta de mes capitalizada ("Noviembre 2026").
+  - Fix de datos: la direccion de "Noche de Cine Clasico" decia Arequipa y el evento es en Trujillo.
+- Verificacion: 121 tests, `tsc`, `lint` y `build` OK (`/events` prerenderizada estatica, sin error de Suspense). En
+  Chromium: header -> /events, busqueda "LIMA", categorias OR + ciudad + precio (AND), chips, orden por precio, estado
+  vacio + limpiar, params invalidos, miga de categoria del detalle, chips de categoria y sheet de filtros en mobile;
+  sin scroll horizontal a 375/1440 ni errores de consola.
 - Log de review: -

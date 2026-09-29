@@ -54,6 +54,25 @@ export interface EventDateRange {
 
 export type EventPriceRange = [min: number, max: number];
 
+export type EventSortOption = "date" | "price";
+export type EventPriceBucket = "up-to-50" | "50-150" | "150-300" | "over-300";
+
+// Filtros de la pagina /events. Viven en la URL (ver event-search.utils.ts).
+export interface EventSearchParams {
+  query: string;
+  categories: EventCategory[];
+  cities: string[];
+  month: string | null; // "2026-11"
+  price: EventPriceBucket | null;
+  sort: EventSortOption;
+}
+
+export interface EventFilterOption {
+  value: string;
+  label: string;
+  count: number;
+}
+
 export interface EventFilters {
   query: string; // texto libre sobre title/venue/city
   category: EventCategoryFilter; // "all" | EventCategory

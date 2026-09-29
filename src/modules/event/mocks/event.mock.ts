@@ -227,7 +227,7 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     isTrending: false,
     description:
       "Una noche dedicada a los clasicos del cine en pantalla grande: doble funcion con peliculas restauradas, conversatorio con criticos y canchita incluida.",
-    address: "Av. El Cafetal 381, Arequipa",
+    address: "Av. El Cafetal 381, Trujillo",
     doorsOpen: "2026-11-06T18:30:00-05:00",
     minAge: null,
     isBestSeller: false,

@@ -150,7 +150,7 @@ function normalizeText(value: string): string {
     .replace(/\p{Diacritic}/gu, "");
 }
 
-function matchesQuery(event: EventEntity, query: string): boolean {
+export function matchesQuery(event: EventEntity, query: string): boolean {
   const normalizedQuery = normalizeText(query);
   if (normalizedQuery === "") return true;
   return [event.title, event.venue, event.city].some((field) =>

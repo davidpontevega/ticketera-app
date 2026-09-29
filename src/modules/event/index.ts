@@ -14,6 +14,8 @@ export { EventDetailHero } from "./components/event-detail-hero";
 export type { EventDetailHeroProps } from "./components/event-detail-hero";
 export { EventDetailInfo } from "./components/event-detail-info";
 export type { EventDetailInfoProps } from "./components/event-detail-info";
+export { EventSearch } from "./components/event-search";
+export type { EventSearchProps } from "./components/event-search";
 export { RelatedEvents } from "./components/related-events";
 export type { RelatedEventsProps } from "./components/related-events";
 export { BestSellerEvents } from "./components/best-seller-events";
@@ -36,6 +38,8 @@ export {
   formatEventTime,
 } from "./utils/event.utils";
 
+export { getEventSearchHref, searchEvents } from "./utils/event-search.utils";
+
 export {
   EVENT_CATEGORIES,
   EVENT_AVAILABILITY_LABEL,
@@ -50,4 +54,5 @@ export type {
   EventEntity,
   EventCategoryFilter,
   EventCategoryOption,
+  EventSearchParams,
 } from "./types/event.types";

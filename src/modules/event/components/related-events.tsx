@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import type { EventEntity } from "../types/event.types";
+import type { EventCategory, EventEntity } from "../types/event.types";
+import { getEventSearchHref } from "../utils/event-search.utils";
 import { EventCard } from "./event-card";
 
 export interface RelatedEventsProps {
   events: readonly EventEntity[];
+  category: EventCategory; // "Ver mas eventos" abre el listado filtrado por esta categoria
 }
 
-export function RelatedEvents({ events }: RelatedEventsProps) {
+export function RelatedEvents({ events, category }: RelatedEventsProps) {
   if (events.length === 0) {
     return null;
   }
@@ -24,7 +26,7 @@ export function RelatedEvents({ events }: RelatedEventsProps) {
             Tambien te puede interesar
           </h2>
           <Link
-            href="/#upcoming-events"
+            href={getEventSearchHref({ categories: [category] })}
             className="hidden items-center gap-1.5 text-[15px] font-semibold text-primary hover:underline sm:flex"
           >
             Ver mas eventos
