@@ -166,6 +166,17 @@ Ninguna bloquea. Defaults tomados, ajustables al aprobar:
 - Historial en `localStorage` (antes era solo el ultimo pedido en `sessionStorage`).
 
 ## Estado
-- Aprobacion humana: pendiente
-- Fase: spec
+- Aprobacion humana: aprobada (2026-09-29)
+- Fase: implementado (pendiente de review humano)
+- Desviaciones menores durante el desarrollo:
+  - `formatEventDateBadge` exportado desde el barrel de `event` (badge de fecha del visor).
+  - Evento pasado de ejemplo: "Selvamonos Festival 2026" (16 de mayo de 2026) como snapshot, fuera de `EVENTS_MOCK`.
+  - Pestañas con `role="tablist"`/`tab` (`aria-selected`); con `?order=` de un pedido pasado se abre "Pasadas".
+  - "Agregar al calendario" deshabilitado en entradas pasadas.
+  - Compras reales: primero las mas nuevas; despues los pedidos de ejemplo.
+- Verificacion: 147 tests, `tsc`, `lint` y `build` OK (`/my-tickets` estatica). En Chromium: guard sin sesion ->
+  login -> vuelve a /my-tickets; pestañas 2/1; asientos C12/C13 y codigos por entrada; pasada "Finalizado"; compra
+  real (logueado, con otro correo de comprador) -> confirmacion -> "Ver mis entradas" abre `?order=` con esa compra
+  seleccionada y "Proximas (3)"; reload conserva; cerrar sesion en /my-tickets manda al login; otro usuario no ve la
+  compra; mobile sin scroll horizontal; sin errores de consola.
 - Log de review: -

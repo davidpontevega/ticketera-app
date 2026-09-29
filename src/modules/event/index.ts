@@ -35,6 +35,7 @@ export {
   formatEventDate,
   formatEventPrice,
   formatEventLongDate,
+  formatEventDateBadge,
   formatEventTime,
 } from "./utils/event.utils";
 

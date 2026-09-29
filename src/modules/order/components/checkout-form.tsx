@@ -12,6 +12,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { useCountdown } from "@/hooks/use-countdown";
 import { useIsClient } from "@/hooks/use-is-client";
 import { focusFormField } from "@/lib/focus-form-field";
+import { useAuthStore } from "@/modules/auth";
 import { getEventHref, type EventEntity } from "@/modules/event";
 import {
   getTicketLines,
@@ -24,7 +25,7 @@ import { CHECKOUT_FIELD_ORDER, CHECKOUT_HOLD_SECONDS } from "../constants/order.
 import { CHECKOUT_FORM_DEFAULT, validateCheckout } from "../schemas/checkout.schema";
 import { useOrderStore } from "../store/order.store";
 import type { CheckoutErrors, CheckoutFieldName } from "../types/order.types";
-import { getCheckoutFieldId, setCheckoutField } from "../utils/order.utils";
+import { getCheckoutFieldId, setCheckoutField, toOrderEventSnapshot } from "../utils/order.utils";
 import { BuyerFields } from "./buyer-fields";
 import { CheckoutSummary, CheckoutSummaryToggle } from "./checkout-summary";
 import { HoldTimerNotice } from "./hold-timer-notice";
@@ -45,6 +46,7 @@ export function CheckoutForm({ event, layout }: CheckoutFormProps) {
   const isClient = useIsClient();
   const { eventId, quantities, seatIds } = useTicketSelectionStore();
   const placeOrder = useOrderStore((state) => state.placeOrder);
+  const user = useAuthStore((state) => state.user);
   const countdown = useCountdown(CHECKOUT_HOLD_SECONDS);
 
   const [values, setValues] = useState(CHECKOUT_FORM_DEFAULT);
@@ -104,6 +106,8 @@ export function CheckoutForm({ event, layout }: CheckoutFormProps) {
     setIsPlacing(true);
     placeOrder({
       eventId: event.id,
+      event: toOrderEventSnapshot(event),
+      accountEmail: user?.email ?? null,
       buyer: {
         fullName: fullName.trim(),
         email: email.trim(),

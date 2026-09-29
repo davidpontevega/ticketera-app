@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { EVENTS_MOCK } from "@/modules/event/mocks/event.mock";
+
 import type { PlaceOrderInput } from "../types/order.types";
+import { toOrderEventSnapshot } from "../utils/order.utils";
 import { useOrderStore } from "./order.store";
 
 const { getState } = useOrderStore;
 
 const input: PlaceOrderInput = {
   eventId: "1",
+  event: toOrderEventSnapshot(EVENTS_MOCK[0]),
+  accountEmail: "maria@example.com",
   buyer: {
     fullName: "Maria Perez",
     email: "maria@example.com",
@@ -30,32 +35,35 @@ const input: PlaceOrderInput = {
 
 describe("useOrderStore", () => {
   beforeEach(() => {
-    getState().clearOrder();
-    sessionStorage.clear();
+    getState().clearOrders();
+    localStorage.clear();
   });
 
-  it("placeOrder stores the order with a number and creation date", () => {
-    const order = getState().placeOrder(input);
-    expect(order.number).toMatch(/^TK-\d{5}$/);
-    expect(Number.isNaN(Date.parse(order.createdAt))).toBe(false);
-    expect(getState().lastOrder).toEqual(order);
+  it("placeOrder adds the order to the history and marks it as the last one", () => {
+    const first = getState().placeOrder(input);
+    const second = getState().placeOrder(input);
+    expect(first.number).toMatch(/^TK-\d{5}$/);
+    expect(Number.isNaN(Date.parse(second.createdAt))).toBe(false);
+    expect(getState().orders).toEqual([first, second]);
+    expect(getState().lastOrderNumber).toBe(second.number);
   });
 
   it("never stores card data even if it is passed at runtime", () => {
     const withCard = { ...input, card: { number: "4111111111111111" } } as PlaceOrderInput;
     getState().placeOrder(withCard);
-    expect(JSON.stringify(getState().lastOrder)).not.toContain("4111");
-    expect(sessionStorage.getItem("ticketera-last-order")).not.toContain("4111");
+    expect(JSON.stringify(getState().orders)).not.toContain("4111");
+    expect(localStorage.getItem("ticketera-orders")).not.toContain("4111");
   });
 
-  it("persists the last order in sessionStorage", () => {
+  it("persists the history in localStorage", () => {
     const order = getState().placeOrder(input);
-    expect(sessionStorage.getItem("ticketera-last-order")).toContain(order.number);
+    expect(localStorage.getItem("ticketera-orders")).toContain(order.number);
   });
 
-  it("clearOrder removes the order", () => {
+  it("clearOrders empties the history", () => {
     getState().placeOrder(input);
-    getState().clearOrder();
-    expect(getState().lastOrder).toBeNull();
+    getState().clearOrders();
+    expect(getState().orders).toEqual([]);
+    expect(getState().lastOrderNumber).toBeNull();
   });
 });

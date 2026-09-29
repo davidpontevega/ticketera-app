@@ -5,35 +5,40 @@ import type { Order, PlaceOrderInput } from "../types/order.types";
 import { generateOrderNumber } from "../utils/order.utils";
 
 export interface OrderState {
-  lastOrder: Order | null;
+  orders: Order[];
+  lastOrderNumber: string | null;
   placeOrder: (input: PlaceOrderInput) => Order;
-  clearOrder: () => void;
+  clearOrders: () => void;
 }
 
-// Ultimo pedido en sessionStorage para que la confirmacion sobreviva a un refresh.
+// Historial de pedidos en localStorage: la compra sigue en "Mis entradas" aunque se cierre
+// la pestaña. Nunca guarda datos de tarjeta (los campos se copian uno por uno).
 export const useOrderStore = create<OrderState>()(
   persist(
     (set) => ({
-      lastOrder: null,
+      orders: [],
+      lastOrderNumber: null,
       placeOrder: (input) => {
         const order: Order = {
           number: generateOrderNumber(),
           eventId: input.eventId,
+          event: input.event,
+          accountEmail: input.accountEmail,
           buyer: input.buyer,
           paymentMethod: input.paymentMethod,
           lines: input.lines,
           total: input.total,
           createdAt: new Date().toISOString(),
         };
-        set({ lastOrder: order });
+        set((state) => ({ orders: [...state.orders, order], lastOrderNumber: order.number }));
         return order;
       },
-      clearOrder: () => set({ lastOrder: null }),
+      clearOrders: () => set({ orders: [], lastOrderNumber: null }),
     }),
     {
-      name: "ticketera-last-order",
-      storage: createJSONStorage(() => sessionStorage),
-      partialize: ({ lastOrder }) => ({ lastOrder }),
+      name: "ticketera-orders",
+      storage: createJSONStorage(() => localStorage),
+      partialize: ({ orders, lastOrderNumber }) => ({ orders, lastOrderNumber }),
     },
   ),
 );

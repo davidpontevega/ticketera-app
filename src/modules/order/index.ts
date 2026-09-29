@@ -3,6 +3,8 @@ export type { CheckoutFormProps } from "./components/checkout-form";
 export { OrderConfirmation } from "./components/order-confirmation";
 export type { OrderConfirmationProps } from "./components/order-confirmation";
 
+export { MyTickets } from "./components/my-tickets";
+
 export { useOrderStore } from "./store/order.store";
 export type { OrderState } from "./store/order.store";
 
@@ -21,6 +23,8 @@ export type {
   CheckoutFormValues,
   DocumentType,
   Order,
+  OrderEventSnapshot,
+  OrderTicket,
   PaymentMethod,
   PlaceOrderInput,
 } from "./types/order.types";
