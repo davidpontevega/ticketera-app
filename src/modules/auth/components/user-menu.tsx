@@ -14,10 +14,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useIsClient } from "@/hooks/use-is-client";
 import { cn } from "@/lib/utils";
 
-import { useAuthStore } from "../store/auth.store";
+import { useCurrentUser } from "../hooks/use-current-user";
 import type { AuthUser } from "../types/auth.types";
 import { getAuthHref, getInitials } from "../utils/auth.utils";
 
@@ -44,14 +43,12 @@ function UserAvatar({ user, className }: { user: AuthUser; className?: string })
 export function UserMenu({ layout = "inline" }: UserMenuProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const isClient = useIsClient();
-  const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
+  const { user, isLoaded, signOut } = useCurrentUser();
 
   // Sin sesion (o antes de hidratar): link a login que vuelve a la pagina actual. El href usa
   // el pathname; al hacer click se suma el query string actual (ej. filtros de /events) sin
   // leer useSearchParams aca, que obligaria a envolver cada pagina en Suspense.
-  if (!isClient || !user) {
+  if (!isLoaded || !user) {
     return (
       <Link
         href={getAuthHref("/login", pathname)}
@@ -87,7 +84,7 @@ export function UserMenu({ layout = "inline" }: UserMenuProps) {
         </Link>
         <button
           type="button"
-          onClick={logout}
+          onClick={() => void signOut()}
           className="flex cursor-pointer items-center gap-2 text-left text-sm font-medium hover:text-primary"
         >
           <LogOut className="size-4" aria-hidden />
@@ -123,7 +120,7 @@ export function UserMenu({ layout = "inline" }: UserMenuProps) {
           <Ticket aria-hidden />
           Mis entradas
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={logout} className="cursor-pointer px-2 py-1.5">
+        <DropdownMenuItem onClick={() => void signOut()} className="cursor-pointer px-2 py-1.5">
           <LogOut aria-hidden />
           Cerrar sesion
         </DropdownMenuItem>

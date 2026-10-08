@@ -5,14 +5,15 @@ export type { OrderConfirmationProps } from "./components/order-confirmation";
 
 export { MyTickets } from "./components/my-tickets";
 
-export { useOrderStore } from "./store/order.store";
-export type { OrderState } from "./store/order.store";
-
-export { CHECKOUT_FORM_DEFAULT, checkoutSchema, validateCheckout } from "./schemas/checkout.schema";
+export {
+  CHECKOUT_FORM_DEFAULT,
+  checkoutSchema,
+  createCheckoutSessionSchema,
+  validateCheckout,
+} from "./schemas/checkout.schema";
 export { CHECKOUT_HOLD_SECONDS } from "./constants/order.constants";
 export {
   buildEventCalendarFile,
-  formatPaymentMethod,
   generateOrderNumber,
 } from "./utils/order.utils";
 
@@ -25,8 +26,9 @@ export type {
   Order,
   OrderEventSnapshot,
   OrderTicket,
-  PaymentMethod,
-  PlaceOrderInput,
 } from "./types/order.types";
 
+export type { CreateCheckoutSessionInput } from "./schemas/checkout.schema";
+
 export { orders, orderStatusEnum } from "./db/order.table";
+export type { OrderRecord, OrderStatus } from "./db/order.table";

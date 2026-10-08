@@ -6,7 +6,8 @@ export { EventForm } from "./components/event-form";
 export { useOrganizerStore } from "./store/organizer.store";
 export type { OrganizerState } from "./store/organizer.store";
 
-export { ORGANIZER_PATH, ORGANIZER_NEW_EVENT_PATH } from "./constants/organizer.constants";
+export { ORGANIZER_PATH, ORGANIZER_NEW_EVENT_PATH, ORGANIZER_NAV } from "./constants/organizer.constants";
+export type { OrganizerNavItem } from "./constants/organizer.constants";
 export { validateEventForm } from "./schemas/event-form.schema";
 export {
   getEventPriceFrom,

@@ -11,4 +11,5 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").notNull().default("customer"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at"), // null = activo. Soft delete: orders.user_id es RESTRICT (spec 008)
 });

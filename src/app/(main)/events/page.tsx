@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 
-import { CatalogEventSearch } from "@/modules/catalog";
+import { EventSearch } from "@/modules/event";
+import { listCatalogEvents } from "@/modules/catalog/services/catalog.service";
 
 export const metadata: Metadata = {
   title: "Explora eventos | Ticketera",
@@ -18,12 +19,13 @@ function EventSearchFallback() {
   );
 }
 
-export default function EventsPage() {
+export default async function EventsPage() {
+  const events = (await listCatalogEvents()).map(({ event }) => event);
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 lg:py-10">
       {/* useSearchParams en la busqueda: el Suspense permite prerenderizar el resto de la pagina */}
       <Suspense fallback={<EventSearchFallback />}>
-        <CatalogEventSearch />
+        <EventSearch events={events} />
       </Suspense>
     </div>
   );

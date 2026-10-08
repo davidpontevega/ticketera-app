@@ -1,0 +1,1 @@
+CREATE INDEX "orders_event_slug_status_idx" ON "orders" USING btree ("event_slug","status","created_at");

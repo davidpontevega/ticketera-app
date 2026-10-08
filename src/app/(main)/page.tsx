@@ -1,35 +1,38 @@
 import {
   BestSellerEvents,
   CategoryList,
-  EVENTS_MOCK,
   EventSearchBar,
   getBestSellerEvents,
-  getFeaturedEvents,
   getTrendingEvents,
   HeroCarousel,
+  UpcomingEvents,
   TrendingSidebar,
 } from "@/modules/event";
-import { CatalogUpcomingEvents } from "@/modules/catalog";
+import { listFeaturedEvents } from "@/modules/event/services/featured-event.service";
+import { listCatalogEvents } from "@/modules/catalog/services/catalog.service";
 import { NewsletterSignup } from "@/components/shared/newsletter-signup";
 
-export default function Home() {
+export default async function Home() {
+  const [featuredEvents, catalog] = await Promise.all([listFeaturedEvents(), listCatalogEvents()]);
+  const events = catalog.map(({ event }) => event);
+
   return (
     <>
       <EventSearchBar />
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="grid gap-4 py-8 md:grid-cols-[1fr_320px]">
-          <HeroCarousel events={getFeaturedEvents(EVENTS_MOCK)} />
-          <TrendingSidebar events={getTrendingEvents(EVENTS_MOCK)} />
+          <HeroCarousel events={featuredEvents} />
+          <TrendingSidebar events={getTrendingEvents(events)} />
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <CategoryList />
       </div>
       <div className="max-w-7xl mx-auto px-4 md:px-6">
-        <BestSellerEvents events={getBestSellerEvents(EVENTS_MOCK)} />
+        <BestSellerEvents events={getBestSellerEvents(events)} />
       </div>
       <div className="max-w-7xl mx-auto px-4 md:px-6">
-        <CatalogUpcomingEvents />
+        <UpcomingEvents events={events} />
       </div>
       <NewsletterSignup />
     </>

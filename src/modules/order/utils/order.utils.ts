@@ -1,14 +1,16 @@
 import type { AuthUser } from "@/modules/auth";
 import type { EventEntity } from "@/modules/event";
+import { getEventBySlug } from "@/modules/event/utils/event.utils";
 
-import { PAYMENT_METHOD_OPTIONS } from "../constants/order.constants";
+import type { OrderRecord, OrderStatus } from "../db/order.table";
+import type { CreateCheckoutSessionInput } from "../schemas/checkout.schema";
 import type {
+  BuyerInfo,
   CheckoutFieldName,
   CheckoutFormValues,
   Order,
   OrderEventSnapshot,
   OrderTicket,
-  PaymentMethod,
 } from "../types/order.types";
 
 const EVENT_DURATION_MS = 3 * 60 * 60 * 1000;
@@ -49,26 +51,66 @@ export function buildEventCalendarFile(event: OrderEventSnapshot, now: Date = ne
   ].join("\r\n");
 }
 
-export function formatPaymentMethod(method: PaymentMethod): string {
-  return PAYMENT_METHOD_OPTIONS.find((option) => option.value === method)?.label ?? method;
-}
-
 // id del input de cada campo, para asociar label/errores y enfocar el primer error.
 export function getCheckoutFieldId(field: CheckoutFieldName): string {
   return `checkout-${field.replace(".", "-")}`;
 }
 
-// Devuelve una copia de los valores con el campo actualizado ("card.number" actualiza values.card.number).
+// Devuelve una copia de los valores con el campo actualizado.
 export function setCheckoutField(
   values: CheckoutFormValues,
   field: CheckoutFieldName,
   value: string | boolean,
 ): CheckoutFormValues {
-  if (field.startsWith("card.")) {
-    const cardField = field.slice("card.".length);
-    return { ...values, card: { ...values.card, [cardField]: value } };
-  }
   return { ...values, [field]: value };
+}
+
+// Body de POST /api/checkout/session: buyer saneado + seleccion, solo los datos que admite el endpoint.
+export function buildCheckoutSessionInput(
+  eventSlug: string,
+  values: Pick<CheckoutFormValues, keyof BuyerInfo>,
+  selection: { quantities: Record<string, number>; seatIds: Record<string, string[]> },
+): CreateCheckoutSessionInput {
+  return {
+    eventSlug,
+    quantities: selection.quantities,
+    seatIds: selection.seatIds,
+    buyer: {
+      fullName: values.fullName.trim(),
+      email: values.email.trim(),
+      documentType: values.documentType,
+      documentNumber: values.documentNumber.trim(),
+      phone: values.phone.replace(/\s+/g, ""),
+    },
+  };
+}
+
+// Numero estable derivado del id de la orden: "TK-ABCDEF12".
+export function getOrderNumber(orderId: string): string {
+  return `TK-${orderId.slice(0, 8).toUpperCase()}`;
+}
+
+// Orden de DB -> Order del cliente. Numero estable entre recargas.
+export function toOrderFromRecord(record: OrderRecord, event: EventEntity): Order {
+  return {
+    number: getOrderNumber(record.id),
+    eventId: event.id,
+    event: toOrderEventSnapshot(event),
+    buyer: record.buyer,
+    lines: record.lines,
+    total: Number(record.totalAmount),
+    // el RSC puede serializar la fecha como string
+    createdAt: new Date(record.createdAt).toISOString(),
+  };
+}
+
+export type ConfirmationStatus = OrderStatus | "not-found";
+
+export function getConfirmationStatus(
+  record: OrderRecord | null,
+  eventSlug: string,
+): ConfirmationStatus {
+  return record && record.eventSlug === eventSlug ? record.status : "not-found";
 }
 
 export function toOrderEventSnapshot(event: EventEntity): OrderEventSnapshot {
@@ -88,7 +130,7 @@ export function downloadEventCalendar(event: OrderEventSnapshot): void {
 }
 
 // Una entrada por cantidad; en zonas numeradas cada entrada lleva su asiento.
-export function getOrderTickets(order: Order): OrderTicket[] {
+export function getOrderTickets(order: Pick<Order, "number" | "lines">): OrderTicket[] {
   const total = order.lines.reduce((sum, line) => sum + line.quantity, 0);
   const tickets: OrderTicket[] = [];
   for (const line of order.lines) {
@@ -104,6 +146,29 @@ export function getOrderTickets(order: Order): OrderTicket[] {
     }
   }
   return tickets;
+}
+
+// Fila de `tickets` a insertar al pagarse la orden (forma propia: no depende del esquema).
+export interface TicketRow {
+  orderId: string;
+  sequence: number;
+  qrCode: string;
+  zoneName: string;
+  seatLabel: string | null;
+  attendeeName: string;
+}
+
+export function toTicketRows(record: Pick<OrderRecord, "id" | "buyer" | "lines">): TicketRow[] {
+  return getOrderTickets({ number: getOrderNumber(record.id), lines: record.lines }).map(
+    (ticket) => ({
+      orderId: record.id,
+      sequence: ticket.index,
+      qrCode: ticket.code,
+      zoneName: ticket.zoneName,
+      seatLabel: ticket.seatLabel,
+      attendeeName: record.buyer.fullName,
+    }),
+  );
 }
 
 export function isOrderUpcoming(order: Order, now: Date = new Date()): boolean {
@@ -122,33 +187,23 @@ export function splitOrdersByTime(
   };
 }
 
-// Pedidos del usuario: comprados con su cuenta o con su correo como comprador.
-export function getUserOrders(orders: readonly Order[], email: string): Order[] {
-  const normalized = email.trim().toLowerCase();
-  return orders.filter(
-    (order) =>
-      order.accountEmail?.toLowerCase() === normalized ||
-      order.buyer.email.trim().toLowerCase() === normalized,
-  );
+// Registros pagados -> Orders; los de eventos fuera del catalogo se cuentan, no se muestran.
+// Conserva el orden de entrada.
+export function toUserOrders(
+  records: readonly OrderRecord[],
+  events: readonly EventEntity[],
+): { orders: Order[]; unavailableCount: number } {
+  const orders: Order[] = [];
+  let unavailableCount = 0;
+  for (const record of records) {
+    const event = getEventBySlug(events, record.eventSlug);
+    if (event) orders.push(toOrderFromRecord(record, event));
+    else unavailableCount += 1;
+  }
+  return { orders, unavailableCount };
 }
 
-// Datos del comprador para autocompletar el checkout: nombre y correo de la cuenta, y documento y
-// celular del ultimo pedido del usuario (si tiene alguno).
-export function getCheckoutPrefill(
-  user: AuthUser | null,
-  orders: readonly Order[],
-): Partial<CheckoutFormValues> {
-  if (!user) return {};
-  const lastOrder = getUserOrders(orders, user.email).sort(
-    (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
-  )[0];
-  return {
-    fullName: user.fullName,
-    email: user.email,
-    ...(lastOrder && {
-      documentType: lastOrder.buyer.documentType,
-      documentNumber: lastOrder.buyer.documentNumber,
-      phone: lastOrder.buyer.phone,
-    }),
-  };
+// Datos del comprador para autocompletar el checkout: nombre y correo de la cuenta.
+export function getCheckoutPrefill(user: AuthUser | null): Partial<CheckoutFormValues> {
+  return user ? { fullName: user.fullName, email: user.email } : {};
 }

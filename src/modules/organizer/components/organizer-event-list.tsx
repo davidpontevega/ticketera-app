@@ -1,75 +1,77 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  formatEventDate,
-  formatEventLongDate,
-  formatEventPrice,
-  getEventHref,
-} from "@/modules/event";
+import { formatEventDate, formatEventPrice } from "@/modules/event";
 
-import {
-  ORGANIZER_EVENT_FILTERS,
-  ORGANIZER_NEW_EVENT_PATH,
-} from "../constants/organizer.constants";
-import type { OrganizerEvent, OrganizerEventFilter } from "../types/organizer.types";
-import {
-  getEventCapacity,
-  getEventRevenue,
-  getEventSold,
-  toEventIsoDate,
-} from "../utils/organizer.utils";
+import { ORGANIZER_EVENT_FILTERS, ORGANIZER_NEW_EVENT_PATH } from "../constants/organizer.constants";
+import { OrganizerEventActions } from "./organizer-event-actions";
+import { OrganizerEventFeaturedToggle } from "./organizer-event-featured-toggle";
+import type {
+  OrganizerDbEventStatus,
+  OrganizerEventFilter,
+  OrganizerEventSummary,
+} from "../types/organizer.types";
 
 export interface OrganizerEventListProps {
-  events: readonly OrganizerEvent[];
+  events: readonly OrganizerEventSummary[];
   filter: OrganizerEventFilter;
   onFilterChange: (filter: OrganizerEventFilter) => void;
 }
 
 const numberFormatter = new Intl.NumberFormat("es-PE");
 
-// Sin hora (borradores) se muestra solo la fecha, para no inventar "12:00 a. m.".
-function getEventDateLabel(date: string, time: string): string {
-  const iso = toEventIsoDate(date, time);
-  if (!iso) return "Sin fecha";
-  return time ? formatEventDate(iso) : formatEventLongDate(iso);
-}
+const STATUS_LABEL: Record<OrganizerDbEventStatus, string> = {
+  published: "Publicado",
+  draft: "Borrador",
+  cancelled: "Cancelado",
+};
 
-function getEventAction(event: OrganizerEvent): { href: string; label: string } | null {
-  if (event.status === "draft") {
-    return { href: `${ORGANIZER_NEW_EVENT_PATH}?draft=${event.id}`, label: "Editar" };
-  }
-  return event.catalogSlug ? { href: getEventHref(event.catalogSlug), label: "Ver evento" } : null;
-}
+const STATUS_CLASS: Record<OrganizerDbEventStatus, string> = {
+  published: "bg-success/10 text-success",
+  draft: "bg-muted text-muted-foreground",
+  cancelled: "bg-destructive/10 text-destructive",
+};
 
 export function OrganizerEventList({ events, filter, onFilterChange }: OrganizerEventListProps) {
   return (
     <div className="flex flex-col gap-4">
-      <div
-        role="group"
-        aria-label="Filtrar eventos"
-        className="flex w-fit gap-1 rounded-xl bg-background p-1 ring-1 ring-foreground/10"
-      >
-        {ORGANIZER_EVENT_FILTERS.map((option) => {
-          const isActive = option.value === filter;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              aria-pressed={isActive}
-              onClick={() => onFilterChange(option.value)}
-              className={cn(
-                "h-9 cursor-pointer rounded-lg px-3.5 text-sm transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-                isActive
-                  ? "bg-foreground font-semibold text-background"
-                  : "font-medium hover:bg-muted",
-              )}
-            >
-              {option.label}
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div
+          role="group"
+          aria-label="Filtrar eventos"
+          className="flex w-fit gap-1 rounded-xl bg-background p-1 ring-1 ring-foreground/10"
+        >
+          {ORGANIZER_EVENT_FILTERS.map((option) => {
+            const isActive = option.value === filter;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => onFilterChange(option.value)}
+                className={cn(
+                  "h-9 cursor-pointer rounded-lg px-3.5 text-sm transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                  isActive
+                    ? "bg-foreground font-semibold text-background"
+                    : "font-medium hover:bg-muted",
+                )}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+        <Button
+          render={<Link href={ORGANIZER_NEW_EVENT_PATH} />}
+          nativeButton={false}
+          className="cursor-pointer"
+        >
+          <Plus aria-hidden />
+          Crear evento
+        </Button>
       </div>
 
       {events.length === 0 ? (
@@ -91,10 +93,8 @@ export function OrganizerEventList({ events, filter, onFilterChange }: Organizer
           <ul className="divide-y divide-border">
             {events.map((event) => {
               const isDraft = event.status === "draft";
-              const sold = getEventSold(event);
-              const capacity = getEventCapacity(event.tiers);
-              const progress = capacity > 0 ? Math.round((sold / capacity) * 100) : 0;
-              const action = getEventAction(event);
+              const progress =
+                event.capacity > 0 ? Math.round((event.sold / event.capacity) * 100) : 0;
               return (
                 <li
                   key={event.id}
@@ -114,9 +114,9 @@ export function OrganizerEventList({ events, filter, onFilterChange }: Organizer
                       )}
                     </div>
                     <div className="flex min-w-0 flex-col">
-                      <span className="truncate font-semibold">{event.name}</span>
+                      <span className="truncate font-semibold">{event.title}</span>
                       <span className="truncate text-[13px] text-muted-foreground">
-                        {getEventDateLabel(event.date, event.time)}
+                        {formatEventDate(event.startsAt)}
                         {event.city && ` · ${event.city}`}
                       </span>
                     </div>
@@ -124,23 +124,23 @@ export function OrganizerEventList({ events, filter, onFilterChange }: Organizer
                   <span
                     className={cn(
                       "w-fit rounded-full px-2.5 py-1 text-xs font-semibold",
-                      isDraft ? "bg-muted text-muted-foreground" : "bg-success/10 text-success",
+                      STATUS_CLASS[event.status],
                     )}
                   >
-                    {isDraft ? "Borrador" : "Publicado"}
+                    {STATUS_LABEL[event.status]}
                   </span>
                   <div className="col-span-2 flex flex-col gap-1.5 lg:col-span-1">
                     <span className="text-sm">
                       <strong className="font-semibold tabular-nums">
-                        {numberFormatter.format(sold)}
+                        {numberFormatter.format(event.sold)}
                       </strong>{" "}
                       <span className="text-muted-foreground">
-                        / {numberFormatter.format(capacity)} vendidas
+                        / {numberFormatter.format(event.capacity)} vendidas
                       </span>
                     </span>
                     <div
                       role="progressbar"
-                      aria-label={`Entradas vendidas de ${event.name}`}
+                      aria-label={`Entradas vendidas de ${event.title}`}
                       aria-valuemin={0}
                       aria-valuemax={100}
                       aria-valuenow={progress}
@@ -154,17 +154,11 @@ export function OrganizerEventList({ events, filter, onFilterChange }: Organizer
                   </div>
                   <span className="text-sm font-semibold tabular-nums lg:text-right">
                     <span className="text-muted-foreground lg:hidden">Ingresos: </span>
-                    {isDraft ? "—" : formatEventPrice(getEventRevenue(event))}
+                    {isDraft ? "—" : formatEventPrice(event.revenue)}
                   </span>
-                  <div className="flex justify-end">
-                    {action && (
-                      <Link
-                        href={action.href}
-                        className="rounded-lg px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-                      >
-                        {action.label}
-                      </Link>
-                    )}
+                  <div className="flex justify-end gap-1">
+                    <OrganizerEventFeaturedToggle eventId={event.id} isFeatured={event.isFeatured} />
+                    <OrganizerEventActions event={event} />
                   </div>
                 </li>
               );

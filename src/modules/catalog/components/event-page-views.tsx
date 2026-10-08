@@ -11,7 +11,7 @@ import {
   getEventHref,
   type EventEntity,
 } from "@/modules/event";
-import { CheckoutForm, OrderConfirmation, type Order } from "@/modules/order";
+import { CheckoutForm, OrderConfirmation, type OrderRecord } from "@/modules/order";
 import { TicketOffer, TicketSelection, ZonePriceList, type VenueLayout } from "@/modules/ticket";
 
 // Contenido de las paginas de un evento. Lo usan las paginas prerenderizadas (eventos del mock) y
@@ -101,10 +101,10 @@ export function EventTicketsView({ event, layout }: EventTicketsViewProps) {
 export interface EventCheckoutViewProps {
   event: EventEntity;
   layout: VenueLayout;
-  onOrderPlaced?: (order: Order) => void;
+  paymentCancelled?: boolean;
 }
 
-export function EventCheckoutView({ event, layout, onOrderPlaced }: EventCheckoutViewProps) {
+export function EventCheckoutView({ event, layout, paymentCancelled }: EventCheckoutViewProps) {
   return (
     <>
       <PurchaseHeader
@@ -114,18 +114,24 @@ export function EventCheckoutView({ event, layout, onOrderPlaced }: EventCheckou
         backLabel="Volver a entradas"
       />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-4 md:px-6 lg:py-8">
-        <CheckoutForm event={event} layout={layout} onOrderPlaced={onOrderPlaced} />
+        <CheckoutForm event={event} layout={layout} paymentCancelled={paymentCancelled} />
       </main>
     </>
   );
 }
 
-export function EventConfirmationView({ event }: { event: EventEntity }) {
+export function EventConfirmationView({
+  event,
+  order,
+}: {
+  event: EventEntity;
+  order: OrderRecord | null;
+}) {
   return (
     <>
       <PurchaseHeader currentStep={3} title="Confirmacion" backHref="/" backLabel="Ir al inicio" />
       <main className="w-full flex-1 px-4 py-8 md:px-6 lg:py-12">
-        <OrderConfirmation event={event} />
+        <OrderConfirmation event={event} order={order} />
       </main>
     </>
   );

@@ -1,11 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { Menu } from "lucide-react"
+import { Menu, ShieldCheck } from "lucide-react"
 
 import { BrandLogo } from "@/components/shared/brand-logo"
 import { UserMenu } from "@/modules/auth"
 import { ORGANIZER_PATH } from "@/modules/organizer"
+import { ADMIN_USERS_PATH, USER_ADMIN_ROLES } from "@/modules/user/constants/user.constants"
+import type { UserRole } from "@/modules/user/types/user.types"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -14,6 +16,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
+
+export interface SiteHeaderProps {
+  role: UserRole | null
+}
+
+function isAdminRole(role: UserRole | null): boolean {
+  return role !== null && (USER_ADMIN_ROLES as readonly UserRole[]).includes(role)
+}
 
 const NAV_LINKS = [
   { href: "/events", label: "Eventos" },
@@ -36,7 +46,9 @@ function NavLinks({ className }: { className?: string }) {
   )
 }
 
-export function SiteHeader() {
+export function SiteHeader({ role }: SiteHeaderProps) {
+  const showAdminButton = isAdminRole(role)
+
   return (
     <header className="sticky top-0 z-50 border-b border-border shadow-sm bg-background">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 md:px-6">
@@ -48,6 +60,17 @@ export function SiteHeader() {
 
         <div className="hidden shrink-0 items-center gap-4 md:flex">
           <UserMenu />
+          {showAdminButton && (
+            <Button
+              variant="outline"
+              render={<Link href={ADMIN_USERS_PATH} />}
+              nativeButton={false}
+              className="cursor-pointer"
+            >
+              <ShieldCheck aria-hidden />
+              Administrador
+            </Button>
+          )}
           <Button
             variant="outline"
             render={<Link href={ORGANIZER_PATH} />}
@@ -80,6 +103,17 @@ export function SiteHeader() {
             </nav>
             <div className="mt-auto flex flex-col gap-4 p-4">
               <UserMenu layout="sheet" />
+              {showAdminButton && (
+                <Button
+                  variant="outline"
+                  render={<Link href={ADMIN_USERS_PATH} />}
+                  nativeButton={false}
+                  className="w-full cursor-pointer"
+                >
+                  <ShieldCheck aria-hidden />
+                  Administrador
+                </Button>
+              )}
               <Button
                 variant="outline"
                 render={<Link href={ORGANIZER_PATH} />}

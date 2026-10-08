@@ -1,31 +1,11 @@
-import { Banknote, CreditCard, Smartphone, type LucideIcon } from "lucide-react";
-
-import type { CheckoutFieldName, DocumentType, PaymentMethod } from "../types/order.types";
+import type { CheckoutFieldName, DocumentType } from "../types/order.types";
 
 export const CHECKOUT_HOLD_SECONDS = 600;
 
-export interface PaymentMethodOption {
-  value: PaymentMethod;
-  label: string;
-  icon: LucideIcon;
-  hint?: string; // texto explicativo cuando no hay campos de tarjeta
-}
-
-export const PAYMENT_METHOD_OPTIONS: readonly PaymentMethodOption[] = [
-  { value: "card", label: "Tarjeta", icon: CreditCard },
-  {
-    value: "yape",
-    label: "Yape",
-    icon: Smartphone,
-    hint: "Al continuar te mostraremos un codigo QR para pagar desde tu app de Yape.",
-  },
-  {
-    value: "cash",
-    label: "PagoEfectivo",
-    icon: Banknote,
-    hint: "Generaremos un codigo de pago para que pagues en agentes, bodegas o tu banca movil.",
-  },
-];
+// Stripe fija el minimo de vida de una checkout session en 30 min.
+export const CHECKOUT_SESSION_TTL_SECONDS = 1800;
+// La reserva dura al menos lo que la session sigue pagable (+60 s de margen).
+export const RESERVATION_WINDOW_SECONDS = CHECKOUT_SESSION_TTL_SECONDS + 60;
 
 export const DOCUMENT_TYPE_OPTIONS: readonly { value: DocumentType; label: string }[] = [
   { value: "dni", label: "DNI" },
@@ -40,10 +20,5 @@ export const CHECKOUT_FIELD_ORDER: readonly CheckoutFieldName[] = [
   "documentType",
   "documentNumber",
   "phone",
-  "paymentMethod",
-  "card.number",
-  "card.expiry",
-  "card.cvc",
-  "card.holderName",
   "acceptedTerms",
 ];

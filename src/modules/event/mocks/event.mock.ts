@@ -90,7 +90,7 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     slug: "el-fantasma-de-la-opera",
     title: "El Fantasma de la Opera",
     category: "theater",
-    date: "2026-09-30T20:00:00-05:00",
+    date: "2027-09-30T20:00:00-05:00",
     venue: "Gran Teatro Nacional",
     city: "Lima",
     priceFrom: 90,
@@ -102,7 +102,7 @@ export const EVENTS_MOCK: readonly EventEntity[] = [
     description:
       "El musical mas longevo de Broadway llega al Gran Teatro Nacional con orquesta en vivo, vestuario original y una puesta en escena de dos horas y media con intermedio.",
     address: "Av. Javier Prado Este 2225, San Borja",
-    doorsOpen: "2026-09-30T19:00:00-05:00",
+    doorsOpen: "2027-09-30T19:00:00-05:00",
     minAge: 12,
     isBestSeller: false,
   },

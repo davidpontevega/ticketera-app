@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -16,16 +16,22 @@ import {
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { useIsClient } from "@/hooks/use-is-client";
-import type { EventEntity } from "@/modules/event";
+import { getEventHref, type EventEntity } from "@/modules/event";
 import { MY_TICKETS_PATH } from "@/modules/auth";
 import { useTicketSelectionStore } from "@/modules/ticket";
 
-import { useOrderStore } from "../store/order.store";
-import { downloadEventCalendar } from "../utils/order.utils";
+import type { OrderRecord } from "../db/order.table";
+import {
+  downloadEventCalendar,
+  getConfirmationStatus,
+  toOrderFromRecord,
+} from "../utils/order.utils";
+import { OrderPaymentStatus } from "./order-payment-status";
 import { OrderTicketCard } from "./order-ticket-card";
 
 export interface OrderConfirmationProps {
   event: EventEntity;
+  order: OrderRecord | null; // orden real (servidor); null si no hay session_id valido
 }
 
 const NEXT_STEPS = [
@@ -46,22 +52,30 @@ const NEXT_STEPS = [
   },
 ];
 
-export function OrderConfirmation({ event }: OrderConfirmationProps) {
+export function OrderConfirmation({ event, order: record }: OrderConfirmationProps) {
   const isClient = useIsClient();
-  const lastOrder = useOrderStore((state) =>
-    state.orders.find((item) => item.number === state.lastOrderNumber),
-  );
   const selectionEventId = useTicketSelectionStore((state) => state.eventId);
   const resetSelection = useTicketSelectionStore((state) => state.reset);
-  const order = isClient && lastOrder?.eventId === event.id ? lastOrder : null;
 
-  // La compra ya se confirmo: se limpia la seleccion de este evento.
+  const status = getConfirmationStatus(record, event.slug);
+  const order = useMemo(
+    () => (status === "paid" && record ? toOrderFromRecord(record, event) : null),
+    [status, record, event],
+  );
+
+  // Compra pagada: se limpia la seleccion del evento.
   useEffect(() => {
     if (order && selectionEventId === event.id) resetSelection();
   }, [order, selectionEventId, event.id, resetSelection]);
 
   if (!isClient) {
     return <div aria-busy className="mx-auto h-96 max-w-4xl animate-pulse rounded-3xl bg-card" />;
+  }
+
+  if (status === "pending" || status === "failed" || status === "cancelled") {
+    return (
+      <OrderPaymentStatus status={status} checkoutHref={`${getEventHref(event.slug)}/checkout`} />
+    );
   }
 
   if (!order) {

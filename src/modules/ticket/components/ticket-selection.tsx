@@ -7,6 +7,7 @@ import { useIsClient } from "@/hooks/use-is-client";
 import { getEventHref, type EventEntity } from "@/modules/event";
 
 import { TICKET_MAX_PER_ZONE } from "../constants/ticket.constants";
+import { useEventAvailability } from "../hooks/use-event-availability";
 import { useTicketSelectionStore } from "../store/ticket-selection.store";
 import type { VenueLayout } from "../types/ticket.types";
 import { getTicketLines } from "../utils/ticket.utils";
@@ -28,7 +29,8 @@ function scrollToSeatMap() {
   document.getElementById("seat-map")?.scrollIntoView({ behavior, block: "start" });
 }
 
-export function TicketSelection({ event, layout }: TicketSelectionProps) {
+export function TicketSelection({ event, layout: baseLayout }: TicketSelectionProps) {
+  const layout = useEventAvailability(event.slug, baseLayout);
   const {
     eventId,
     activeZoneId,

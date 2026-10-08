@@ -1,17 +1,28 @@
-import { EventConfirmationView, LocalEventConfirmation } from "@/modules/catalog";
-import { EVENTS_MOCK, getEventBySlug } from "@/modules/event";
+import { notFound } from "next/navigation";
 
-export function generateStaticParams() {
-  return EVENTS_MOCK.map(({ slug }) => ({ slug }));
-}
+import { EventConfirmationView } from "@/modules/catalog";
+import { getCatalogEvent } from "@/modules/catalog/services/catalog.service";
+import type { OrderRecord } from "@/modules/order";
+// Ruta directa: el barrel arrastraria `stripe`/`server-only` al bundle cliente.
+import { syncOrderWithSession } from "@/modules/order/services/checkout.service";
 
 export default async function ConfirmationPage({
   params,
+  searchParams,
 }: PageProps<"/events/[slug]/confirmation">) {
   const { slug } = await params;
-  const event = getEventBySlug(EVENTS_MOCK, slug);
-  // Slug fuera del mock: puede ser un evento publicado desde el panel (vive en el navegador).
-  if (!event) return <LocalEventConfirmation slug={slug} />;
+  const { session_id } = await searchParams;
+  const found = await getCatalogEvent(slug);
+  if (!found) notFound();
 
-  return <EventConfirmationView event={event} />;
+  let order: OrderRecord | null = null;
+  if (typeof session_id === "string" && session_id) {
+    try {
+      order = await syncOrderWithSession(session_id);
+    } catch (error) {
+      // Id invalido o Stripe caido: se muestra "no encontramos tu compra".
+      console.error(error);
+    }
+  }
+  return <EventConfirmationView event={found.event} order={order} />;
 }

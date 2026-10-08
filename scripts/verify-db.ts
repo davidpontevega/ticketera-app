@@ -79,6 +79,15 @@ async function main() {
       .values({
         userId: user.id,
         eventId: event.id,
+        eventSlug: event.slug,
+        buyer: {
+          fullName: "Verify DB User",
+          email: user.email,
+          documentType: "dni",
+          documentNumber: "00000000",
+          phone: "000000000",
+        },
+        lines: [],
         totalAmount: "10.00",
       })
       .returning();
@@ -103,7 +112,10 @@ async function main() {
     [ticket] = await db
       .insert(tickets)
       .values({
+        orderId: order.id,
         orderItemId: orderItem.id,
+        sequence: 1,
+        zoneName: "General",
         qrCode: `verify-db-qr-${runId}`,
       })
       .returning();

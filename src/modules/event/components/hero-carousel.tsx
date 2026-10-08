@@ -12,11 +12,11 @@ import "swiper/css/pagination";
 
 import { Button } from "@/components/ui/button";
 
-import type { EventEntity } from "../types/event.types";
+import type { FeaturedEvent } from "../types/event.types";
 import { formatEventDate, getEventHref } from "../utils/event.utils";
 
 export interface HeroCarouselProps {
-  events: readonly EventEntity[];
+  events: readonly FeaturedEvent[];
 }
 
 export function HeroCarousel({ events }: HeroCarouselProps) {

@@ -1,4 +1,4 @@
-import { CalendarDays, LayoutDashboard, Plus, type LucideIcon } from "lucide-react";
+import { CalendarDays, LayoutDashboard, type LucideIcon } from "lucide-react";
 
 import type { OrganizerEventFilter } from "../types/organizer.types";
 
@@ -19,7 +19,6 @@ export const ORGANIZER_NAV: readonly OrganizerNavItem[] = [
     label: "Mis eventos",
     icon: CalendarDays,
   },
-  { href: ORGANIZER_NEW_EVENT_PATH, label: "Crear evento", icon: Plus },
 ];
 
 export const ORGANIZER_EVENT_FILTERS: readonly { value: OrganizerEventFilter; label: string }[] = [

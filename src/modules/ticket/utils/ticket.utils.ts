@@ -1,8 +1,12 @@
-import type { EventEntity } from "@/modules/event";
+import type { EventAvailability, EventEntity } from "@/modules/event";
+
+// Ruta directa: no se exporta desde el barrel de event (evita ciclo de barrels).
+import { SEED_GENERAL_ZONE_STOCK } from "@/modules/event/utils/event-seed.utils";
 
 import { SEAT_OCCUPANCY_BY_AVAILABILITY } from "../constants/ticket.constants";
 import { VENUE_LAYOUT_BY_CATEGORY, VENUE_TEMPLATES } from "../mocks/venue.mock";
 import type {
+  EventAvailabilitySnapshot,
   Seat,
   TicketLine,
   TicketTotals,
@@ -103,6 +107,59 @@ function buildZone(template: VenueZoneTemplate, event: EventEntity) {
 export function getVenueLayout(event: EventEntity): VenueLayout {
   const { zones, ...template } = VENUE_TEMPLATES[VENUE_LAYOUT_BY_CATEGORY[event.category]];
   return { ...template, zones: zones.map((zone) => buildZone(zone, event)) };
+}
+
+export function getZoneCapacity(zone: VenueZone): number {
+  if (zone.capacity !== undefined) return zone.capacity;
+  return zone.seating === "numbered" ? zone.seats.length : SEED_GENERAL_ZONE_STOCK;
+}
+
+const FEW_LEFT_RATIO = 0.2; // quedan <= 20% de las entradas -> "Ultimas entradas"
+
+export function getAvailabilityByRatio(remaining: number, capacity: number): EventAvailability {
+  if (remaining <= 0) return "sold-out";
+  return remaining / capacity <= FEW_LEFT_RATIO ? "few-left" : "available";
+}
+
+function getZoneRemaining(zone: VenueZone): number {
+  return zone.seating === "numbered"
+    ? getAvailableSeatCount(zone)
+    : (zone.remaining ?? getZoneCapacity(zone));
+}
+
+export function deriveEventAvailability(layout: VenueLayout): EventAvailability {
+  const remaining = layout.zones.reduce((total, zone) => total + getZoneRemaining(zone), 0);
+  const capacity = layout.zones.reduce((total, zone) => total + getZoneCapacity(zone), 0);
+  return getAvailabilityByRatio(remaining, capacity);
+}
+
+export function applyAvailability(
+  layout: VenueLayout,
+  snapshot: EventAvailabilitySnapshot,
+): VenueLayout {
+  return {
+    ...layout,
+    zones: layout.zones.map((zone) => {
+      if (zone.seating === "numbered") {
+        const taken = new Set(snapshot.seats[zone.id] ?? []);
+        if (taken.size === 0) return zone;
+        return {
+          ...zone,
+          seats: zone.seats.map((seat) =>
+            taken.has(`${seat.row}${seat.number}`) ? { ...seat, status: "occupied" as const } : seat,
+          ),
+        };
+      }
+      const sold = snapshot.sold[zone.id];
+      if (sold === undefined) return zone;
+      const remaining = Math.max(0, getZoneCapacity(zone) - sold);
+      return {
+        ...zone,
+        remaining,
+        availability: remaining === 0 ? ("sold-out" as const) : zone.availability,
+      };
+    }),
+  };
 }
 
 function compareSeats(a: Seat, b: Seat): number {

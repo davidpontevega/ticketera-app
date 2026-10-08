@@ -1,29 +1,28 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
-import { EventDetailView, LocalEventDetail } from "@/modules/catalog";
-import { EVENTS_MOCK, getEventBySlug, getRelatedEvents } from "@/modules/event";
-import { getVenueLayout } from "@/modules/ticket";
-
-export function generateStaticParams() {
-  return EVENTS_MOCK.map(({ slug }) => ({ slug }));
-}
+import { EventDetailView } from "@/modules/catalog";
+import { getCatalogEvent, listCatalogEvents } from "@/modules/catalog/services/catalog.service";
+import { getRelatedEvents } from "@/modules/event";
 
 export async function generateMetadata({ params }: PageProps<"/events/[slug]">): Promise<Metadata> {
-  const event = getEventBySlug(EVENTS_MOCK, (await params).slug);
-  return event ? { title: `${event.title} | Ticketera`, description: event.description } : {};
+  const found = await getCatalogEvent((await params).slug);
+  return found
+    ? { title: `${found.event.title} | Ticketera`, description: found.event.description }
+    : {};
 }
 
 export default async function EventDetailPage({ params }: PageProps<"/events/[slug]">) {
   const { slug } = await params;
-  const event = getEventBySlug(EVENTS_MOCK, slug);
-  // Slug fuera del mock: puede ser un evento publicado desde el panel (vive en el navegador).
-  if (!event) return <LocalEventDetail slug={slug} />;
+  const found = await getCatalogEvent(slug);
+  if (!found) notFound();
 
+  const all = (await listCatalogEvents()).map(({ event }) => event);
   return (
     <EventDetailView
-      event={event}
-      layout={getVenueLayout(event)}
-      relatedEvents={getRelatedEvents(EVENTS_MOCK, event)}
+      event={found.event}
+      layout={found.layout}
+      relatedEvents={getRelatedEvents(all, found.event)}
     />
   );
 }

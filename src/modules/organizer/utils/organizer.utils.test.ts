@@ -1,25 +1,25 @@
 import { describe, expect, it } from "vitest";
 
 import { ORGANIZER_EVENTS_MOCK } from "../mocks/organizer.mock";
-import type { OrganizerEvent } from "../types/organizer.types";
+import type { OrganizerEvent, OrganizerEventSummary } from "../types/organizer.types";
 import {
   filterOrganizerEvents,
   getEventCapacity,
   getEventPriceFrom,
-  getEventRevenue,
-  getEventSold,
+  getEventStatusChangeError,
   getOrganizerEvents,
   getOrganizerKpis,
+  summarizeOrganizerEvents,
   toEventIsoDate,
+  type OrganizerEventRow,
+  type PaidOrderRow,
 } from "./organizer.utils";
 
 const [viveLatino, , , draft] = ORGANIZER_EVENTS_MOCK;
 
 describe("event amounts", () => {
-  it("computes capacity, sold and revenue", () => {
+  it("computes capacity", () => {
     expect(getEventCapacity(viveLatino.tiers)).toBe(8000);
-    expect(getEventSold(viveLatino)).toBe(7420);
-    expect(getEventRevenue(viveLatino)).toBe(5700 * 180 + 1720 * 350);
     expect(getEventCapacity([{ price: 10, quantity: Number.NaN }])).toBe(0);
   });
 
@@ -29,13 +29,105 @@ describe("event amounts", () => {
   });
 });
 
+describe("summarizeOrganizerEvents", () => {
+  const events: OrganizerEventRow[] = [
+    {
+      id: "evt-1",
+      slug: "vive-latino-peru",
+      title: "Vive Latino Peru",
+      status: "published",
+      startsAt: new Date("2026-11-14T21:00:00-05:00"),
+      city: "Lima",
+      imageUrl: "https://example.com/vive-latino.jpg",
+      capacity: 8000,
+      isFeatured: true,
+    },
+    {
+      id: "evt-2",
+      slug: "feria-familiar",
+      title: "Feria Familiar",
+      status: "draft",
+      startsAt: new Date("2026-12-01T10:00:00-05:00"),
+      city: "Arequipa",
+      imageUrl: "https://example.com/feria.jpg",
+      capacity: 500,
+      isFeatured: false,
+    },
+  ];
+
+  const paidOrders: PaidOrderRow[] = [
+    {
+      eventSlug: "vive-latino-peru",
+      totalAmount: "360.00",
+      lines: [
+        {
+          zoneId: "general",
+          zoneName: "General",
+          quantity: 2,
+          unitPrice: 180,
+          amount: 360,
+          seatLabels: [],
+        },
+      ],
+    },
+    {
+      eventSlug: "vive-latino-peru",
+      totalAmount: "175.00",
+      lines: [
+        {
+          zoneId: "vip",
+          zoneName: "VIP",
+          quantity: 1,
+          unitPrice: 175,
+          amount: 175,
+          seatLabels: [],
+        },
+      ],
+    },
+  ];
+
+  it("sums sold and revenue only for the matching event slug", () => {
+    const summaries = summarizeOrganizerEvents(events, paidOrders);
+    expect(summaries[0]).toMatchObject({ sold: 3, revenue: 535 });
+  });
+
+  it("leaves sold and revenue at 0 for events without orders", () => {
+    const summaries = summarizeOrganizerEvents(events, paidOrders);
+    expect(summaries[1]).toMatchObject({ sold: 0, revenue: 0 });
+  });
+
+  it("keeps the order and capacity of events, and serializes startsAt as ISO", () => {
+    const summaries = summarizeOrganizerEvents(events, paidOrders);
+    expect(summaries.map((summary) => summary.id)).toEqual(["evt-1", "evt-2"]);
+    expect(summaries[0].capacity).toBe(8000);
+    expect(summaries[0].startsAt).toBe("2026-11-15T02:00:00.000Z");
+  });
+
+  it("keeps isFeatured from the row for both true and false", () => {
+    const summaries = summarizeOrganizerEvents(events, paidOrders);
+    expect(summaries[0].isFeatured).toBe(true);
+    expect(summaries[1].isFeatured).toBe(false);
+  });
+});
+
 describe("getOrganizerKpis", () => {
-  it("adds up the demo events", () => {
-    expect(getOrganizerKpis(ORGANIZER_EVENTS_MOCK)).toEqual({
-      sold: 7420 + 312 + 414,
-      revenue: ORGANIZER_EVENTS_MOCK.reduce((total, event) => total + getEventRevenue(event), 0),
-      published: 3,
-    });
+  const summaries: Pick<OrganizerEventSummary, "sold" | "revenue" | "status">[] = [
+    { sold: 100, revenue: 1000, status: "published" },
+    { sold: 20, revenue: 200, status: "draft" },
+    { sold: 5, revenue: 50, status: "cancelled" },
+  ];
+
+  it("adds up sold and revenue across all events", () => {
+    expect(getOrganizerKpis(summaries)).toEqual({ sold: 125, revenue: 1250, published: 1 });
+  });
+
+  it("counts published ignoring draft and cancelled", () => {
+    expect(
+      getOrganizerKpis([
+        { sold: 0, revenue: 0, status: "draft" },
+        { sold: 0, revenue: 0, status: "cancelled" },
+      ]).published,
+    ).toBe(0);
   });
 });
 
@@ -77,10 +169,80 @@ describe("getOrganizerEvents", () => {
 });
 
 describe("filterOrganizerEvents", () => {
-  it("filters by status", () => {
+  it("filters mock events by status", () => {
     expect(filterOrganizerEvents(ORGANIZER_EVENTS_MOCK, "all")).toHaveLength(4);
     expect(filterOrganizerEvents(ORGANIZER_EVENTS_MOCK, "published")).toHaveLength(3);
     expect(filterOrganizerEvents(ORGANIZER_EVENTS_MOCK, "draft")).toEqual([draft]);
+  });
+
+  it("with summaries, excludes cancelled from published but keeps it in all", () => {
+    const summaries: Pick<OrganizerEventSummary, "status">[] = [
+      { status: "published" },
+      { status: "cancelled" },
+      { status: "draft" },
+    ];
+    expect(filterOrganizerEvents(summaries, "published")).toEqual([{ status: "published" }]);
+    expect(filterOrganizerEvents(summaries, "all")).toEqual(summaries);
+  });
+});
+
+describe("getEventStatusChangeError", () => {
+  const now = new Date("2026-01-01T00:00:00-05:00");
+  const future = new Date("2026-06-01T00:00:00-05:00");
+  const past = new Date("2025-01-01T00:00:00-05:00");
+
+  it("allows draft -> published with a future date and at least one tier", () => {
+    expect(
+      getEventStatusChangeError({ status: "draft", startsAt: future, tierCount: 1 }, "published", now),
+    ).toBeNull();
+  });
+
+  it("rejects draft -> published with a past date as past-date", () => {
+    expect(
+      getEventStatusChangeError({ status: "draft", startsAt: past, tierCount: 1 }, "published", now),
+    ).toBe("past-date");
+  });
+
+  it("rejects draft -> published without tiers as no-tiers", () => {
+    expect(
+      getEventStatusChangeError({ status: "draft", startsAt: future, tierCount: 0 }, "published", now),
+    ).toBe("no-tiers");
+  });
+
+  it("allows published -> draft always", () => {
+    expect(
+      getEventStatusChangeError({ status: "published", startsAt: past, tierCount: 0 }, "draft", now),
+    ).toBeNull();
+  });
+
+  it("allows draft or published -> cancelled even with sales", () => {
+    expect(
+      getEventStatusChangeError({ status: "draft", startsAt: past, tierCount: 0 }, "cancelled", now),
+    ).toBeNull();
+    expect(
+      getEventStatusChangeError({ status: "published", startsAt: future, tierCount: 3 }, "cancelled", now),
+    ).toBeNull();
+  });
+
+  it("rejects any transition from cancelled as invalid-transition", () => {
+    expect(
+      getEventStatusChangeError({ status: "cancelled", startsAt: future, tierCount: 1 }, "draft", now),
+    ).toBe("invalid-transition");
+    expect(
+      getEventStatusChangeError({ status: "cancelled", startsAt: future, tierCount: 1 }, "published", now),
+    ).toBe("invalid-transition");
+    expect(
+      getEventStatusChangeError({ status: "cancelled", startsAt: future, tierCount: 1 }, "cancelled", now),
+    ).toBe("invalid-transition");
+  });
+
+  it("rejects transitions to the same status as invalid-transition", () => {
+    expect(
+      getEventStatusChangeError({ status: "draft", startsAt: future, tierCount: 1 }, "draft", now),
+    ).toBe("invalid-transition");
+    expect(
+      getEventStatusChangeError({ status: "published", startsAt: future, tierCount: 1 }, "published", now),
+    ).toBe("invalid-transition");
   });
 });
 

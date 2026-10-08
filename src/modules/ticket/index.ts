@@ -13,16 +13,22 @@ export { useTicketSelectionStore } from "./store/ticket-selection.store";
 export type { TicketSelectionState } from "./store/ticket-selection.store";
 
 export {
+  applyAvailability,
+  deriveEventAvailability,
+  getZoneCapacity,
   getVenueLayout,
   getTicketLines,
   getTicketTotals,
   formatTicketCount,
 } from "./utils/ticket.utils";
+export { buildVenueLayoutFromTiers } from "./utils/tier-layout.utils";
+export type { TierInput } from "./utils/tier-layout.utils";
 
 export { TICKET_MAX_PER_ZONE } from "./constants/ticket.constants";
 export { ZONE_TONES } from "./mocks/venue.mock";
 
 export type {
+  EventAvailabilitySnapshot,
   Seat,
   SeatStatus,
   TicketLine,

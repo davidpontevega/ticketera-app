@@ -2,8 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { LogIn, Sparkles, Ticket } from "lucide-react";
+import { Info, LogIn, Sparkles, Ticket } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -14,32 +13,26 @@ import { useIsClient } from "@/hooks/use-is-client";
 import { focusFormField } from "@/lib/focus-form-field";
 import { getAuthHref, useAuthStore } from "@/modules/auth";
 import { getEventHref, type EventEntity } from "@/modules/event";
-import {
-  getTicketLines,
-  getTicketTotals,
-  useTicketSelectionStore,
-  type VenueLayout,
-} from "@/modules/ticket";
+import { getTicketLines, useTicketSelectionStore, type VenueLayout } from "@/modules/ticket";
 
 import { CHECKOUT_FIELD_ORDER, CHECKOUT_HOLD_SECONDS } from "../constants/order.constants";
 import { CHECKOUT_FORM_DEFAULT, validateCheckout } from "../schemas/checkout.schema";
-import { useOrderStore } from "../store/order.store";
-import type { CheckoutErrors, CheckoutFieldName, Order } from "../types/order.types";
+import { startCheckoutSession } from "../services/order.service";
+import type { CheckoutErrors, CheckoutFieldName } from "../types/order.types";
 import {
+  buildCheckoutSessionInput,
   getCheckoutFieldId,
   getCheckoutPrefill,
   setCheckoutField,
-  toOrderEventSnapshot,
 } from "../utils/order.utils";
 import { BuyerFields } from "./buyer-fields";
 import { CheckoutSummary, CheckoutSummaryToggle } from "./checkout-summary";
 import { HoldTimerNotice } from "./hold-timer-notice";
-import { PaymentFields } from "./payment-fields";
 
 export interface CheckoutFormProps {
   event: EventEntity;
   layout: VenueLayout;
-  onOrderPlaced?: (order: Order) => void; // ej. sumar las vendidas a un evento del organizador
+  paymentCancelled?: boolean; // volvio de Stripe sin pagar
 }
 
 function focusFirstError(errors: CheckoutErrors) {
@@ -47,23 +40,23 @@ function focusFirstError(errors: CheckoutErrors) {
   if (firstField) focusFormField(getCheckoutFieldId(firstField));
 }
 
-export function CheckoutForm({ event, layout, onOrderPlaced }: CheckoutFormProps) {
-  const router = useRouter();
+export function CheckoutForm({ event, layout, paymentCancelled = false }: CheckoutFormProps) {
   const isClient = useIsClient();
   const { eventId, quantities, seatIds } = useTicketSelectionStore();
-  const placeOrder = useOrderStore((state) => state.placeOrder);
   const user = useAuthStore((state) => state.user);
   const countdown = useCountdown(CHECKOUT_HOLD_SECONDS);
 
   // Autocompletado solo en la carga inicial. El inicializador corre en el navegador con los stores
   // ya hidratados, y el formulario no se renderiza antes de isClient (sin hydration mismatch).
-  const [prefill] = useState(() =>
-    getCheckoutPrefill(useAuthStore.getState().user, useOrderStore.getState().orders),
-  );
-  const [values, setValues] = useState(() => ({ ...CHECKOUT_FORM_DEFAULT, ...prefill }));
+  const [prefill] = useState(() => getCheckoutPrefill(useAuthStore.getState().user));
+  const [values, setValues] = useState(() => ({
+    ...CHECKOUT_FORM_DEFAULT,
+    ...prefill,
+  }));
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [isPlacing, setIsPlacing] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const eventHref = getEventHref(event.slug);
   const ticketsHref = `${eventHref}/tickets`;
@@ -101,7 +94,7 @@ export function CheckoutForm({ event, layout, onOrderPlaced }: CheckoutFormProps
     if (hasSubmitted) setErrors(validateCheckout(nextValues));
   };
 
-  const handleSubmit = (formEvent: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (formEvent: FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
     if (countdown.isExpired || isPlacing) return;
 
@@ -113,25 +106,17 @@ export function CheckoutForm({ event, layout, onOrderPlaced }: CheckoutFormProps
       return;
     }
 
-    const { paymentMethod, fullName, email, documentType, documentNumber, phone } = values;
     setIsPlacing(true);
-    const order = placeOrder({
-      eventId: event.id,
-      event: toOrderEventSnapshot(event),
-      accountEmail: user?.email ?? null,
-      buyer: {
-        fullName: fullName.trim(),
-        email: email.trim(),
-        documentType,
-        documentNumber: documentNumber.trim(),
-        phone: phone.replace(/\s+/g, ""),
-      },
-      paymentMethod,
-      lines,
-      total: getTicketTotals(lines).amount,
-    });
-    onOrderPlaced?.(order);
-    router.replace(`${eventHref}/confirmation`);
+    setSubmitError(null);
+    try {
+      const { url } = await startCheckoutSession(
+        buildCheckoutSessionInput(event.slug, values, { quantities, seatIds }),
+      );
+      window.location.assign(url); // isPlacing queda en true: el usuario sale de la pagina
+    } catch (error) {
+      setIsPlacing(false);
+      setSubmitError(error instanceof Error ? error.message : "No pudimos iniciar el pago.");
+    }
   };
 
   return (
@@ -142,6 +127,11 @@ export function CheckoutForm({ event, layout, onOrderPlaced }: CheckoutFormProps
       className="grid items-start gap-5 pb-32 lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-8 lg:pb-0"
     >
       <div className="flex min-w-0 flex-col gap-5">
+        {paymentCancelled && (
+          <p className="rounded-xl bg-muted px-4 py-3 text-sm text-foreground">
+            Cancelaste el pago. Tu seleccion sigue guardada.
+          </p>
+        )}
         <HoldTimerNotice label={countdown.label} isExpired={countdown.isExpired} />
         <CheckoutSummaryToggle event={event} lines={lines} ticketsHref={ticketsHref} />
         <BuyerFields
@@ -167,12 +157,10 @@ export function CheckoutForm({ event, layout, onOrderPlaced }: CheckoutFormProps
             )
           }
         />
-        <PaymentFields
-          paymentMethod={values.paymentMethod}
-          card={values.card}
-          errors={errors}
-          onValueChange={handleValueChange}
-        />
+        <p className="flex items-start gap-3 rounded-xl bg-primary/5 p-4 text-sm text-foreground">
+          <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+          Seras redirigido a Stripe para completar el pago de forma segura.
+        </p>
         <Field
           orientation="horizontal"
           data-invalid={Boolean(errors.acceptedTerms)}
@@ -203,12 +191,21 @@ export function CheckoutForm({ event, layout, onOrderPlaced }: CheckoutFormProps
             {errors.acceptedTerms && <FieldError>{errors.acceptedTerms}</FieldError>}
           </div>
         </Field>
+        {submitError && (
+          <p
+            role="alert"
+            className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          >
+            {submitError}
+          </p>
+        )}
       </div>
       <CheckoutSummary
         event={event}
         lines={lines}
         ticketsHref={ticketsHref}
         isExpired={countdown.isExpired}
+        isPlacing={isPlacing}
         hint={values.acceptedTerms ? undefined : "Acepta los terminos para continuar."}
       />
     </form>

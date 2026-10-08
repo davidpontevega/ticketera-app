@@ -1,4 +1,4 @@
-import { integer, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { index, integer, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { events } from "@/modules/event/db/event.table";
 
@@ -12,4 +12,4 @@ export const ticketTiers = pgTable("ticket_tiers", {
   salesEndAt: timestamp("sales_end_at", { withTimezone: true }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [index("ticket_tiers_event_id_idx").on(table.eventId)]);

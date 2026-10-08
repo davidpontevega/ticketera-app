@@ -5,6 +5,9 @@ import type { EventEntity } from "@/modules/event/types/event.types";
 
 import type { VenueZone, ZoneShape } from "../types/ticket.types";
 import {
+  applyAvailability,
+  deriveEventAvailability,
+  getZoneCapacity,
   buildSeats,
   findBestSeats,
   getAvailableSeatCount,
@@ -182,5 +185,64 @@ describe("findBestSeats", () => {
 describe("getAvailableSeatCount", () => {
   it("counts available seats", () => {
     expect(getAvailableSeatCount(zoneWith({ A: [A, O, A], B: [O] }))).toBe(2);
+  });
+});
+
+describe("getZoneCapacity / applyAvailability", () => {
+  const layout = getVenueLayout(badBunny);
+  const numbered = layout.zones.find((zone) => zone.seating === "numbered")!;
+  const general = layout.zones.find((zone) => zone.seating === "general")!;
+  const empty = { seats: {}, sold: {} };
+
+  it("capacity: numbered = seats, general = 500", () => {
+    expect(getZoneCapacity(numbered)).toBe(numbered.seats.length);
+    expect(getZoneCapacity(general)).toBe(500);
+  });
+
+  it("marks taken seat occupied by label without mutating", () => {
+    const seat = numbered.seats.find((item) => item.status === "available")!;
+    const next = applyAvailability(layout, {
+      seats: { [numbered.id]: [`${seat.row}${seat.number}`] },
+      sold: {},
+    });
+    const zone = next.zones.find((item) => item.id === numbered.id)!;
+    expect(zone.seats.find((item) => item.id === seat.id)?.status).toBe("occupied");
+    expect(numbered.seats.find((item) => item.id === seat.id)?.status).toBe("available");
+  });
+
+  it("general zone: remaining = capacity - sold, clamps and sold-out at 0", () => {
+    const some = applyAvailability(layout, { seats: {}, sold: { [general.id]: 120 } });
+    expect(some.zones.find((z) => z.id === general.id)?.remaining).toBe(380);
+    const full = applyAvailability(layout, { seats: {}, sold: { [general.id]: 900 } });
+    const zone = full.zones.find((z) => z.id === general.id)!;
+    expect(zone.remaining).toBe(0);
+    expect(zone.availability).toBe("sold-out");
+  });
+
+  it("empty snapshot leaves layout equal", () => {
+    expect(applyAvailability(layout, empty)).toEqual(layout);
+  });
+});
+
+describe("getZoneCapacity with capacity and deriveEventAvailability", () => {
+  const base = getVenueLayout(badBunny);
+  const general = (capacity: number | undefined, remaining?: number): VenueZone => ({
+    ...base.zones[0],
+    seating: "general",
+    seats: [],
+    capacity,
+    remaining,
+  });
+
+  it("prefers zone.capacity over the default rule", () => {
+    expect(getZoneCapacity(general(42))).toBe(42);
+    expect(getZoneCapacity(general(undefined))).toBe(500);
+  });
+
+  it("derives sold-out, few-left (threshold) and available", () => {
+    const layout = (remaining: number) => ({ ...base, zones: [general(100, remaining)] });
+    expect(deriveEventAvailability(layout(0))).toBe("sold-out");
+    expect(deriveEventAvailability(layout(20))).toBe("few-left");
+    expect(deriveEventAvailability(layout(21))).toBe("available");
   });
 });

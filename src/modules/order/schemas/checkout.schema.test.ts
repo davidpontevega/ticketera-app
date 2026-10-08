@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { CheckoutFormValues } from "../types/order.types";
-import { CHECKOUT_FORM_DEFAULT, validateCheckout } from "./checkout.schema";
-
-const NOW = new Date(2026, 8, 29); // 29 set 2026
+import { CHECKOUT_FORM_DEFAULT, createCheckoutSessionSchema, validateCheckout } from "./checkout.schema";
 
 const validValues: CheckoutFormValues = {
   fullName: "Maria Perez",
@@ -11,29 +9,23 @@ const validValues: CheckoutFormValues = {
   documentType: "dni",
   documentNumber: "12345678",
   phone: "987 654 321",
-  paymentMethod: "card",
-  card: { number: "4111 1111 1111 1111", expiry: "12/28", cvc: "123", holderName: "Maria Perez" },
   acceptedTerms: true,
 };
 
 function errorsFor(overrides: Partial<CheckoutFormValues>) {
-  return validateCheckout({ ...validValues, ...overrides }, NOW);
+  return validateCheckout({ ...validValues, ...overrides });
 }
 
 describe("validateCheckout", () => {
   it("returns no errors for a valid form", () => {
-    expect(validateCheckout(validValues, NOW)).toEqual({});
+    expect(validateCheckout(validValues)).toEqual({});
   });
 
   it("reports every required field for the empty form", () => {
-    const errors = validateCheckout(CHECKOUT_FORM_DEFAULT, NOW);
+    const errors = validateCheckout(CHECKOUT_FORM_DEFAULT);
     expect(Object.keys(errors).sort()).toEqual(
       [
         "acceptedTerms",
-        "card.cvc",
-        "card.expiry",
-        "card.holderName",
-        "card.number",
         "documentNumber",
         "email",
         "fullName",
@@ -68,25 +60,60 @@ describe("validateCheckout", () => {
     expect(errorsFor({ phone: "987654321" })).toEqual({});
   });
 
-  it("validates card fields", () => {
-    const card = validValues.card;
-    expect(errorsFor({ card: { ...card, number: "4111 1111" } })["card.number"]).toBeDefined();
-    expect(errorsFor({ card: { ...card, expiry: "08/26" } })["card.expiry"]).toBeDefined();
-    expect(errorsFor({ card: { ...card, expiry: "13/30" } })["card.expiry"]).toBeDefined();
-    expect(errorsFor({ card: { ...card, expiry: "09/26" } })).toEqual({});
-    expect(errorsFor({ card: { ...card, cvc: "12" } })["card.cvc"]).toBeDefined();
-    expect(errorsFor({ card: { ...card, holderName: "" } })["card.holderName"]).toBeDefined();
-  });
-
-  it("ignores card fields for Yape and PagoEfectivo", () => {
-    const emptyCard = CHECKOUT_FORM_DEFAULT.card;
-    expect(errorsFor({ paymentMethod: "yape", card: emptyCard })).toEqual({});
-    expect(errorsFor({ paymentMethod: "cash", card: emptyCard })).toEqual({});
-  });
-
   it("requires accepting the terms", () => {
     expect(errorsFor({ acceptedTerms: false }).acceptedTerms).toBe(
       "Acepta los terminos para continuar",
     );
+  });
+});
+
+describe("createCheckoutSessionSchema", () => {
+  const validBody = {
+    eventSlug: "feria-del-libro",
+    quantities: { general: 2 },
+    seatIds: { vip: ["A1", "A2"] },
+    buyer: {
+      fullName: "Maria Perez",
+      email: "maria@example.com",
+      documentType: "dni" as const,
+      documentNumber: "12345678",
+      phone: "987654321",
+    },
+  };
+
+  it("parses a valid body", () => {
+    expect(createCheckoutSessionSchema.parse(validBody)).toEqual(validBody);
+  });
+
+  it("rejects an invalid buyer email", () => {
+    const result = createCheckoutSessionSchema.safeParse({
+      ...validBody,
+      buyer: { ...validBody.buyer, email: "not-an-email" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects negative quantities", () => {
+    const result = createCheckoutSessionSchema.safeParse({
+      ...validBody,
+      quantities: { general: -1 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an empty eventSlug", () => {
+    const result = createCheckoutSessionSchema.safeParse({ ...validBody, eventSlug: "" });
+    expect(result.success).toBe(false);
+  });
+
+  it("drops extra price fields from the parsed result", () => {
+    const parsed = createCheckoutSessionSchema.parse({
+      ...validBody,
+      unitPrice: 50,
+      total: 100,
+    });
+    expect(parsed).not.toHaveProperty("unitPrice");
+    expect(parsed).not.toHaveProperty("total");
+    expect(parsed).toEqual(validBody);
   });
 });

@@ -57,3 +57,30 @@ export interface OrganizerKpis {
   revenue: number;
   published: number;
 }
+
+export type OrganizerDbEventStatus = "draft" | "published" | "cancelled"; // = events.status
+
+export interface OrganizerEventSummary {
+  id: string;
+  slug: string;
+  title: string;
+  status: OrganizerDbEventStatus;
+  startsAt: string; // ISO
+  city: string;
+  imageUrl: string;
+  capacity: number;
+  sold: number;
+  revenue: number; // PEN
+  isFeatured: boolean;
+}
+
+export type EventStatusChangeError = "invalid-transition" | "past-date" | "no-tiers";
+
+export type EventAdminActionState =
+  | { status: "idle" }
+  | { status: "success"; message: string }
+  | {
+      status: "error";
+      message: string;
+      fieldErrors?: Partial<Record<"eventId" | "status" | "featured", string>>;
+    };

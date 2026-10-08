@@ -10,6 +10,9 @@ export type { UserMenuProps } from "./components/user-menu";
 export { useAuthStore } from "./store/auth.store";
 export type { AuthState } from "./store/auth.store";
 
+export { useCurrentUser } from "./hooks/use-current-user";
+export type { CurrentUser } from "./hooks/use-current-user";
+
 export {
   validateForgotPassword,
   validateLogin,

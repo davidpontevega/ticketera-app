@@ -8,6 +8,41 @@
       "when": 1790650424453,
       "tag": "0000_whole_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790818378465,
+      "tag": "0001_red_harpoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790823241015,
+      "tag": "0002_exotic_goblin_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790826110081,
+      "tag": "0003_silent_random",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791421659131,
+      "tag": "0004_glamorous_shadowcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791476033298,
+      "tag": "0005_mushy_johnny_storm",
+      "breakpoints": true
     }
   ]
 }

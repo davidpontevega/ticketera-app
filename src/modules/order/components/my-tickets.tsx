@@ -1,20 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import { History, Ticket } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import { useIsClient } from "@/hooks/use-is-client";
 import { cn } from "@/lib/utils";
-import { MY_TICKETS_PATH, getAuthHref, useAuthStore } from "@/modules/auth";
 import { getEventSearchHref } from "@/modules/event";
 
-import { getDemoOrders } from "../mocks/order.mock";
-import { useOrderStore } from "../store/order.store";
-import { getUserOrders, splitOrdersByTime } from "../utils/order.utils";
+import type { Order } from "../types/order.types";
+import { splitOrdersByTime } from "../utils/order.utils";
 import { OrderList } from "./order-list";
 import { OrderTicketViewer } from "./order-ticket-viewer";
 
@@ -38,27 +34,17 @@ const EMPTY_STATE: Record<
   },
 };
 
-export function MyTickets() {
-  const router = useRouter();
-  const preselectedNumber = useSearchParams().get("order");
-  const isClient = useIsClient();
-  const user = useAuthStore((state) => state.user);
-  const storedOrders = useOrderStore((state) => state.orders);
+export interface MyTicketsProps {
+  orders: readonly Order[];
+  /** Compras pagadas de eventos que ya no estan en el catalogo. */
+  unavailableCount?: number;
+  initialOrderNumber?: string | null;
+}
 
+export function MyTickets({ orders, unavailableCount = 0, initialOrderNumber = null }: MyTicketsProps) {
   const [tab, setTab] = useState<MyTicketsTab | null>(null);
-  const [selectedNumber, setSelectedNumber] = useState<string | null>(preselectedNumber);
+  const [selectedNumber, setSelectedNumber] = useState<string | null>(initialOrderNumber);
 
-  // Guard de sesion (la sesion mock vive en el navegador): sin usuario, al login y de vuelta.
-  useEffect(() => {
-    if (isClient && !user) router.replace(getAuthHref("/login", MY_TICKETS_PATH));
-  }, [isClient, user, router]);
-
-  if (!isClient || !user) {
-    return <div aria-busy className="h-96 animate-pulse rounded-3xl bg-muted" />;
-  }
-
-  // Compras reales primero (las mas nuevas arriba en su grupo), luego los pedidos de ejemplo.
-  const orders = [...getUserOrders(storedOrders, user.email).reverse(), ...getDemoOrders(user)];
   const groups = splitOrdersByTime(orders);
   const preselectedIsPast = groups.past.some((order) => order.number === selectedNumber);
   const activeTab = tab ?? (preselectedIsPast ? "past" : "upcoming");
@@ -99,6 +85,15 @@ export function MyTickets() {
           })}
         </div>
       </div>
+
+      {unavailableCount > 0 && (
+        <p role="status" className="rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">
+          {unavailableCount === 1
+            ? "1 compra de un evento que ya no esta disponible."
+            : `${unavailableCount} compras de eventos que ya no estan disponibles.`}{" "}
+          Escribenos y te ayudamos.
+        </p>
+      )}
 
       {selectedOrder ? (
         <div className="grid items-start gap-5 lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-8">

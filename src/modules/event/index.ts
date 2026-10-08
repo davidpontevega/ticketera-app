@@ -53,7 +53,10 @@ export type {
   EventCategory,
   EventAvailability,
   EventEntity,
+  FeaturedEvent,
   EventCategoryFilter,
   EventCategoryOption,
   EventSearchParams,
 } from "./types/event.types";
+// El servicio (server-only/drizzle) se importa por ruta directa: "@/modules/event/services/event.service".
+export type { PublishedEvent } from "./services/event.service";

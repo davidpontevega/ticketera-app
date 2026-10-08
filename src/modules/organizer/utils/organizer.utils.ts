@@ -1,6 +1,11 @@
+import { getTicketTotals, type TicketLine } from "@/modules/ticket";
+
 import type {
+  EventStatusChangeError,
+  OrganizerDbEventStatus,
   OrganizerEvent,
   OrganizerEventFilter,
+  OrganizerEventSummary,
   OrganizerKpis,
   OrganizerTicketTier,
 } from "../types/organizer.types";
@@ -25,14 +30,6 @@ export function getEventCapacity(tiers: readonly TierAmounts[]): number {
   );
 }
 
-export function getEventSold(event: OrganizerEvent): number {
-  return event.tiers.reduce((total, tier) => total + tier.sold, 0);
-}
-
-export function getEventRevenue(event: OrganizerEvent): number {
-  return event.tiers.reduce((total, tier) => total + tier.sold * tier.price, 0);
-}
-
 // Menor precio > 0 (null si no hay ninguno).
 export function getEventPriceFrom(
   tiers: readonly Pick<OrganizerTicketTier, "price">[],
@@ -43,11 +40,56 @@ export function getEventPriceFrom(
   return prices.length > 0 ? Math.min(...prices) : null;
 }
 
-export function getOrganizerKpis(events: readonly OrganizerEvent[]): OrganizerKpis {
+export interface OrganizerEventRow {
+  id: string;
+  slug: string;
+  title: string;
+  status: OrganizerDbEventStatus;
+  startsAt: Date;
+  city: string;
+  imageUrl: string;
+  capacity: number;
+  isFeatured: boolean;
+}
+
+export interface PaidOrderRow {
+  eventSlug: string;
+  totalAmount: string;
+  lines: readonly TicketLine[];
+}
+
+export function summarizeOrganizerEvents(
+  events: readonly OrganizerEventRow[],
+  paidOrders: readonly PaidOrderRow[],
+): OrganizerEventSummary[] {
+  return events.map((event) => {
+    const orders = paidOrders.filter((order) => order.eventSlug === event.slug);
+    return {
+      id: event.id,
+      slug: event.slug,
+      title: event.title,
+      status: event.status,
+      startsAt: event.startsAt.toISOString(),
+      city: event.city,
+      imageUrl: event.imageUrl,
+      capacity: event.capacity,
+      isFeatured: event.isFeatured,
+      sold: orders.reduce(
+        (total, order) => total + getTicketTotals(order.lines).quantity,
+        0,
+      ),
+      revenue: orders.reduce((total, order) => total + Number(order.totalAmount), 0),
+    };
+  });
+}
+
+export function getOrganizerKpis(
+  events: readonly Pick<OrganizerEventSummary, "sold" | "revenue" | "status">[],
+): OrganizerKpis {
   return events.reduce(
     (kpis, event) => ({
-      sold: kpis.sold + getEventSold(event),
-      revenue: kpis.revenue + getEventRevenue(event),
+      sold: kpis.sold + event.sold,
+      revenue: kpis.revenue + event.revenue,
       published: kpis.published + (event.status === "published" ? 1 : 0),
     }),
     { sold: 0, revenue: 0, published: 0 },
@@ -68,9 +110,28 @@ export function getOrganizerEvents(
   return [...own, ...demo.filter((event) => !ownIds.has(event.id))];
 }
 
-export function filterOrganizerEvents(
-  events: readonly OrganizerEvent[],
+// Tabla D3 de la spec 030. cancelled es terminal; cualquier transicion no listada es invalid-transition.
+export function getEventStatusChangeError(
+  event: { status: OrganizerDbEventStatus; startsAt: Date; tierCount: number },
+  target: OrganizerDbEventStatus,
+  now: Date = new Date(),
+): EventStatusChangeError | null {
+  if (event.status === "draft" && target === "published") {
+    // Si ambas condiciones fallan, se prioriza "past-date" (mas visible que agregar tiers).
+    if (event.startsAt.getTime() <= now.getTime()) return "past-date";
+    if (event.tierCount <= 0) return "no-tiers";
+    return null;
+  }
+  if (event.status === "published" && target === "draft") return null;
+  if ((event.status === "draft" || event.status === "published") && target === "cancelled") {
+    return null;
+  }
+  return "invalid-transition";
+}
+
+export function filterOrganizerEvents<T extends { status: string }>(
+  events: readonly T[],
   filter: OrganizerEventFilter,
-): OrganizerEvent[] {
+): T[] {
   return filter === "all" ? [...events] : events.filter((event) => event.status === filter);
 }

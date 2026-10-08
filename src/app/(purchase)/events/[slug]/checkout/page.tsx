@@ -1,16 +1,22 @@
-import { EventCheckoutView, LocalEventCheckout } from "@/modules/catalog";
-import { EVENTS_MOCK, getEventBySlug } from "@/modules/event";
-import { getVenueLayout } from "@/modules/ticket";
+import { notFound } from "next/navigation";
 
-export function generateStaticParams() {
-  return EVENTS_MOCK.map(({ slug }) => ({ slug }));
-}
+import { EventCheckoutView } from "@/modules/catalog";
+import { getCatalogEvent } from "@/modules/catalog/services/catalog.service";
 
-export default async function CheckoutPage({ params }: PageProps<"/events/[slug]/checkout">) {
+export default async function CheckoutPage({
+  params,
+  searchParams,
+}: PageProps<"/events/[slug]/checkout">) {
   const { slug } = await params;
-  const event = getEventBySlug(EVENTS_MOCK, slug);
-  // Slug fuera del mock: puede ser un evento publicado desde el panel (vive en el navegador).
-  if (!event) return <LocalEventCheckout slug={slug} />;
+  const { payment } = await searchParams;
+  const found = await getCatalogEvent(slug);
+  if (!found) notFound();
 
-  return <EventCheckoutView event={event} layout={getVenueLayout(event)} />;
+  return (
+    <EventCheckoutView
+      event={found.event}
+      layout={found.layout}
+      paymentCancelled={payment === "cancelled"}
+    />
+  );
 }

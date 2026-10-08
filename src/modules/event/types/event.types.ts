@@ -34,6 +34,17 @@ export interface EventEntity {
   minAge: number | null; // null = apto para todo publico
 }
 
+// Campos minimos que usa HeroCarousel; lee de la DB (events.is_featured + status = 'published').
+export interface FeaturedEvent {
+  id: string;
+  slug: string;
+  title: string;
+  imageUrl: string;
+  date: string; // ISO 8601, mapeado desde events.startsAt (Date)
+  venue: string;
+  city: string;
+}
+
 export type EventCategoryFilter = EventCategory | "all";
 
 export interface EventCategoryOption {

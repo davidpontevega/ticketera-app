@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, Lock } from "lucide-react";
+import { ChevronDown, Loader2, Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,27 +20,32 @@ export interface CheckoutSummaryProps {
   lines: readonly TicketLine[];
   ticketsHref: string;
   isExpired: boolean;
+  isPlacing?: boolean; // redirigiendo a Stripe
   hint?: string; // ej. "Acepta los terminos para continuar."
 }
 
 function PayButton({
-  total,
   isExpired,
+  isPlacing,
   className,
 }: {
-  total: string;
   isExpired: boolean;
+  isPlacing: boolean;
   className?: string;
 }) {
   return (
     <Button
       type="submit"
       size="lg"
-      disabled={isExpired}
+      disabled={isExpired || isPlacing}
       className={cn("h-13 rounded-xl px-6 text-base font-semibold", className)}
     >
-      <Lock aria-hidden className="size-4" />
-      Pagar {total}
+      {isPlacing ? (
+        <Loader2 aria-hidden className="size-4 animate-spin" />
+      ) : (
+        <Lock aria-hidden className="size-4" />
+      )}
+      {isPlacing ? "Redirigiendo a Stripe..." : "Pagar con Stripe"}
     </Button>
   );
 }
@@ -74,6 +79,7 @@ export function CheckoutSummary({
   lines,
   ticketsHref,
   isExpired,
+  isPlacing = false,
   hint,
 }: CheckoutSummaryProps) {
   const total = formatEventPrice(getTicketTotals(lines).amount);
@@ -112,12 +118,12 @@ export function CheckoutSummary({
           <span className="font-medium">Total</span>
           <span className="text-3xl font-bold tracking-tight tabular-nums">{total}</span>
         </div>
-        <PayButton total={total} isExpired={isExpired} />
+        <PayButton isExpired={isExpired} isPlacing={isPlacing} />
         <PayHint hint={hint} isExpired={isExpired} ticketsHref={ticketsHref} />
       </aside>
 
       <div className="fixed inset-x-0 bottom-0 z-40 flex flex-col gap-1.5 border-t border-border bg-background px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-12px_24px_-18px_rgba(15,23,42,0.35)] lg:hidden">
-        <PayButton total={total} isExpired={isExpired} className="w-full" />
+        <PayButton isExpired={isExpired} isPlacing={isPlacing} className="w-full" />
         <PayHint hint={hint} isExpired={isExpired} ticketsHref={ticketsHref} />
       </div>
     </>
@@ -129,7 +135,7 @@ export function CheckoutSummaryToggle({
   event,
   lines,
   ticketsHref,
-}: Omit<CheckoutSummaryProps, "isExpired" | "hint">) {
+}: Omit<CheckoutSummaryProps, "isExpired" | "isPlacing" | "hint">) {
   const [isOpen, setIsOpen] = useState(false);
   const totals = getTicketTotals(lines);
 

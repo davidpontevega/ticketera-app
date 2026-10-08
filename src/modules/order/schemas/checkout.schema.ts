@@ -18,25 +18,7 @@ const DOCUMENT_RULES: Record<DocumentType, { pattern: RegExp; message: string }>
 
 const removeSpaces = (value: string) => value.replace(/\s+/g, "");
 
-// "MM/AA" vigente hasta el ultimo dia de ese mes.
-function isExpiryValid(expiry: string, now: Date): boolean {
-  const match = /^(0[1-9]|1[0-2])\/(\d{2})$/.exec(expiry.trim());
-  if (!match) return false;
-  const month = Number(match[1]);
-  const year = 2000 + Number(match[2]);
-  const firstDayAfterExpiry = new Date(year, month, 1);
-  return firstDayAfterExpiry > now;
-}
-
-const cardSchema = z.object({
-  number: z.string(),
-  expiry: z.string(),
-  cvc: z.string(),
-  holderName: z.string(),
-});
-
-// Reglas por campo. Las que dependen de otro campo (documento segun su tipo, tarjeta segun el
-// metodo de pago) van en getConditionalErrors: zod no corre los refine del objeto si falla
+// Reglas por campo. Las que dependen de otro campo (documento segun su tipo) van en getConditionalErrors: zod no corre los refine del objeto si falla
 // algun campo, y el usuario tiene que ver todos los errores juntos.
 export const checkoutSchema = z.object({
   fullName: z
@@ -51,31 +33,14 @@ export const checkoutSchema = z.object({
     .string()
     .transform(removeSpaces)
     .pipe(z.string().regex(/^9\d{8}$/, "Ingresa un celular de 9 digitos que empiece con 9")),
-  paymentMethod: z.enum(["card", "yape", "cash"]),
-  card: cardSchema,
   acceptedTerms: z.literal(true, "Acepta los terminos para continuar"),
 });
 
-function getConditionalErrors(values: CheckoutFormValues, now: Date): CheckoutErrors {
+function getConditionalErrors(values: CheckoutFormValues): CheckoutErrors {
   const errors: CheckoutErrors = {};
   const rule = DOCUMENT_RULES[values.documentType];
   if (rule && !rule.pattern.test(values.documentNumber.trim())) {
     errors.documentNumber = rule.message;
-  }
-  if (values.paymentMethod !== "card") return errors;
-
-  const { number, expiry, cvc, holderName } = values.card;
-  if (!/^\d{16}$/.test(removeSpaces(number))) {
-    errors["card.number"] = "La tarjeta debe tener 16 digitos";
-  }
-  if (!isExpiryValid(expiry, now)) {
-    errors["card.expiry"] = "Ingresa un vencimiento MM/AA vigente";
-  }
-  if (!/^\d{3,4}$/.test(cvc.trim())) {
-    errors["card.cvc"] = "El CVV tiene 3 o 4 digitos";
-  }
-  if (holderName.trim().length < 3) {
-    errors["card.holderName"] = "Ingresa el nombre como aparece en la tarjeta";
   }
   return errors;
 }
@@ -86,17 +51,12 @@ export const CHECKOUT_FORM_DEFAULT: CheckoutFormValues = {
   documentType: "dni",
   documentNumber: "",
   phone: "",
-  paymentMethod: "card",
-  card: { number: "", expiry: "", cvc: "", holderName: "" },
   acceptedTerms: false,
 };
 
-// {} si es valido; si no, el primer mensaje de cada campo ("fullName", "card.number", ...).
-export function validateCheckout(
-  values: CheckoutFormValues,
-  now: Date = new Date(),
-): CheckoutErrors {
-  const errors = getConditionalErrors(values, now);
+// {} si es valido; si no, el primer mensaje de cada campo ("fullName", "email", ...).
+export function validateCheckout(values: CheckoutFormValues): CheckoutErrors {
+  const errors = getConditionalErrors(values);
   const result = checkoutSchema.safeParse(values);
   if (result.success) return errors;
   for (const issue of result.error.issues) {
@@ -105,3 +65,20 @@ export function validateCheckout(
   }
   return errors;
 }
+
+// Body de POST /api/checkout/session. Sin campos de precio: z.object descarta props desconocidas
+// (unitPrice, total, etc.) al parsear, el servidor siempre recalcula el monto.
+export const createCheckoutSessionSchema = z.object({
+  eventSlug: z.string().min(1),
+  quantities: z.record(z.string(), z.number().int().min(0)),
+  seatIds: z.record(z.string(), z.array(z.string())),
+  buyer: checkoutSchema.pick({
+    fullName: true,
+    email: true,
+    documentType: true,
+    documentNumber: true,
+    phone: true,
+  }),
+});
+
+export type CreateCheckoutSessionInput = z.infer<typeof createCheckoutSessionSchema>;

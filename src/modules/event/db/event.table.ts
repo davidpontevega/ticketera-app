@@ -1,4 +1,4 @@
-import { boolean, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { users } from "@/modules/user/db/user.table";
 
@@ -37,4 +37,4 @@ export const events = pgTable("events", {
   status: eventStatusEnum("status").notNull().default("draft"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [index("events_organizer_id_idx").on(table.organizerId)]);

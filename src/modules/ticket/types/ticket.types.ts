@@ -46,6 +46,7 @@ export interface VenueZone {
   labelColor: string; // texto sobre fillColor (contraste AA)
   seats: Seat[]; // [] si seating === "general"
   remaining?: number; // entradas que quedan en una zona general con cupo (eventos del organizador)
+  capacity?: number; // ticket_tiers.total_stock; si falta, getZoneCapacity usa la regla por defecto
 }
 
 interface VenueLayoutBase {
@@ -77,6 +78,12 @@ export interface TicketLine {
   unitPrice: number;
   amount: number;
   seatLabels: string[]; // ["C12", "C13"]; [] en zona general
+}
+
+// Lo tomado (pagado o reservado) en servidor, por zona. Labels como TicketLine.seatLabels ("C12").
+export interface EventAvailabilitySnapshot {
+  seats: Record<string, string[]>;
+  sold: Record<string, number>;
 }
 
 export interface TicketTotals {

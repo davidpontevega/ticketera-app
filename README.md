@@ -26,6 +26,14 @@ npm run dev
 
 Abrir [http://localhost:3000](http://localhost:3000).
 
+### Catalogo de eventos (requiere seed)
+
+El catalogo publico (home, `/events`, detalle y compra) lee los eventos **publicados de la base de datos**. El seed no corre solo: con la DB vacia el catalogo se ve vacio y los detalles dan 404. Para cargar los eventos de ejemplo:
+
+```bash
+SEED_ORGANIZER_EMAIL=organizador@ejemplo.com npm run db:seed
+```
+
 | Script | Uso |
 |--------|-----|
 | `npm run dev` | Servidor de desarrollo |
@@ -44,7 +52,31 @@ organizador, seleccion de entradas y correos simulados se guardan en `localStora
 - `/dev/inbox`: bandeja de correos simulados (por ejemplo, el enlace de "Olvidaste tu contraseña").
 - `/dev/storage`: ver y borrar los datos guardados, o reiniciar la app (link "Datos de prueba" en el footer).
 
-### Iniciar sesion con Google (opcional)
+## Autenticacion con Clerk
+
+A partir de la spec 018 la identidad real de la app se migra a [Clerk](https://clerk.com) (email/password + Google),
+en reemplazo del mock en `localStorage` descrito arriba. La migracion es por fases; esta seccion documenta la
+configuracion manual necesaria desde la fase 1.
+
+Pasos:
+
+1. Crear una aplicacion en el dashboard de Clerk y habilitar **Email + Password** y **Google** (User & Authentication
+   -> Social connections). En desarrollo Clerk provee credenciales de Google compartidas; en produccion se cargan
+   Client ID/Secret propios de Google Cloud en el dashboard de Clerk (no en el repo).
+2. Copiar las keys del dashboard a `.env.local` (ver variables `NEXT_PUBLIC_CLERK_*` y `CLERK_SECRET_KEY` en
+   `.env.example`).
+3. En Clerk -> Webhooks, agregar el endpoint `https://<host>/api/webhooks/clerk` con los eventos `user.created`,
+   `user.updated`, `user.deleted`, y copiar el Signing Secret a `CLERK_WEBHOOK_SIGNING_SECRET`.
+4. En local, exponer `localhost:3000` con un tunel (`ngrok http 3000` o `cloudflared tunnel --url
+   http://localhost:3000`) y usar esa URL publica en el endpoint del webhook: Clerk no puede llamar a `localhost`
+   directo. La pestaña "Testing" del endpoint permite reenviar eventos por el tunel.
+5. Correr `npm run db:migrate` para aplicar la migracion que agrega `deleted_at` a `users`.
+
+### Iniciar sesion con Google (opcional, obsoleto)
+
+> **Obsoleto:** esta seccion describe el flujo mock con Google Identity Services de la spec 016. Se reemplaza por
+> Google via Clerk (seccion "Autenticacion con Clerk" de arriba) y se elimina junto con el resto del codigo mock en
+> la fase 4 de la spec 018.
 
 Sin configuracion, "Continuar con Google" abre un selector de cuentas simulado. Para usar Google real
 (Google Identity Services):

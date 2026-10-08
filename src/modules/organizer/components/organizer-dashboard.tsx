@@ -5,30 +5,23 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/modules/auth";
 
 import {
   ORGANIZER_EVENTS_ANCHOR,
   ORGANIZER_NEW_EVENT_PATH,
 } from "../constants/organizer.constants";
-import { ORGANIZER_EVENTS_MOCK } from "../mocks/organizer.mock";
-import { useOrganizerStore } from "../store/organizer.store";
-import type { OrganizerEventFilter } from "../types/organizer.types";
-import {
-  filterOrganizerEvents,
-  getOrganizerEvents,
-  getOrganizerKpis,
-} from "../utils/organizer.utils";
+import type { OrganizerEventFilter, OrganizerEventSummary } from "../types/organizer.types";
+import { filterOrganizerEvents, getOrganizerKpis } from "../utils/organizer.utils";
 import { OrganizerEventList } from "./organizer-event-list";
 import { OrganizerKpis } from "./organizer-kpis";
 
-// Se renderiza dentro de OrganizerShell, que ya garantiza sesion e hidratacion.
-export function OrganizerDashboard() {
-  const user = useAuthStore((state) => state.user);
-  const storedEvents = useOrganizerStore((state) => state.events);
-  const [filter, setFilter] = useState<OrganizerEventFilter>("all");
+export interface OrganizerDashboardProps {
+  events: readonly OrganizerEventSummary[];
+}
 
-  const events = getOrganizerEvents(storedEvents, ORGANIZER_EVENTS_MOCK, user?.email ?? "");
+// Se renderiza dentro de OrganizerShell, que ya garantiza sesion y rol (guard de servidor).
+export function OrganizerDashboard({ events }: OrganizerDashboardProps) {
+  const [filter, setFilter] = useState<OrganizerEventFilter>("all");
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 lg:gap-8">

@@ -5,18 +5,22 @@ import { EVENTS_MOCK } from "@/modules/event/mocks/event.mock";
 import { CHECKOUT_FORM_DEFAULT } from "../schemas/checkout.schema";
 import {
   buildEventCalendarFile,
-  formatPaymentMethod,
+  buildCheckoutSessionInput,
+  getConfirmationStatus,
+  toOrderFromRecord,
   generateOrderNumber,
   getCheckoutFieldId,
   getCheckoutPrefill,
   getOrderTickets,
-  getUserOrders,
   isOrderUpcoming,
   setCheckoutField,
   splitOrdersByTime,
   toOrderEventSnapshot,
+  toUserOrders,
+  getOrderNumber,
+  toTicketRows,
 } from "./order.utils";
-import { getDemoOrders } from "../mocks/order.mock";
+import type { OrderRecord } from "../db/order.table";
 import type { Order } from "../types/order.types";
 
 describe("generateOrderNumber", () => {
@@ -44,35 +48,145 @@ describe("buildEventCalendarFile", () => {
   });
 });
 
-describe("formatPaymentMethod", () => {
-  it("returns the label of each method", () => {
-    expect(formatPaymentMethod("card")).toBe("Tarjeta");
-    expect(formatPaymentMethod("yape")).toBe("Yape");
-    expect(formatPaymentMethod("cash")).toBe("PagoEfectivo");
-  });
-});
-
 describe("getCheckoutFieldId", () => {
   it("builds a DOM friendly id", () => {
     expect(getCheckoutFieldId("email")).toBe("checkout-email");
-    expect(getCheckoutFieldId("card.number")).toBe("checkout-card-number");
   });
 });
 
 describe("setCheckoutField", () => {
-  it("updates top level and nested card fields without mutating", () => {
+  it("updates a field without mutating", () => {
     const withEmail = setCheckoutField(CHECKOUT_FORM_DEFAULT, "email", "a@b.com");
     expect(withEmail.email).toBe("a@b.com");
-    const withCard = setCheckoutField(withEmail, "card.cvc", "123");
-    expect(withCard.card.cvc).toBe("123");
-    expect(withCard.email).toBe("a@b.com");
     expect(CHECKOUT_FORM_DEFAULT.email).toBe("");
-    expect(CHECKOUT_FORM_DEFAULT.card.cvc).toBe("");
+    expect(setCheckoutField(withEmail, "acceptedTerms", true).acceptedTerms).toBe(true);
+  });
+});
+
+describe("buildCheckoutSessionInput", () => {
+  it("trims the buyer, strips phone spaces and drops extra fields", () => {
+    const values = {
+      ...CHECKOUT_FORM_DEFAULT,
+      fullName: "  Ana Torres ",
+      email: " ana@test.pe ",
+      documentType: "dni" as const,
+      documentNumber: " 12345678 ",
+      phone: "987 654 321",
+      acceptedTerms: true,
+    };
+    const selection = { quantities: { general: 2 }, seatIds: { general: [] } };
+    expect(buildCheckoutSessionInput("bad-bunny", values, selection)).toEqual({
+      eventSlug: "bad-bunny",
+      quantities: { general: 2 },
+      seatIds: { general: [] },
+      buyer: {
+        fullName: "Ana Torres",
+        email: "ana@test.pe",
+        documentType: "dni",
+        documentNumber: "12345678",
+        phone: "987654321",
+      },
+    });
+  });
+});
+
+const RECORD: OrderRecord = {
+  id: "abcdef12-3456-7890-abcd-ef1234567890",
+  userId: null,
+  eventId: null,
+  eventSlug: EVENTS_MOCK[0].slug,
+  buyer: {
+    fullName: "Ana Torres",
+    email: "ana@test.pe",
+    documentType: "dni",
+    documentNumber: "12345678",
+    phone: "987654321",
+  },
+  lines: [
+    { zoneId: "general", zoneName: "Campo General", quantity: 1, unitPrice: 450, amount: 450, seatLabels: [] },
+  ],
+  status: "paid",
+  totalAmount: "450.00",
+  stripePaymentIntentId: null,
+  stripeCheckoutSessionId: "cs_test_1",
+  createdAt: new Date("2026-10-01T10:00:00Z"),
+  updatedAt: new Date("2026-10-01T10:00:00Z"),
+};
+
+describe("toOrderFromRecord", () => {
+  it("builds a stable number, numeric total and copies buyer and lines", () => {
+    const order = toOrderFromRecord(RECORD, EVENTS_MOCK[0]);
+    expect(order.number).toBe("TK-ABCDEF12");
+    expect(order.total).toBe(450);
+    expect(order.buyer).toBe(RECORD.buyer);
+    expect(order.lines).toBe(RECORD.lines);
+    expect(order).not.toHaveProperty("accountEmail");
+    expect(order.event.slug).toBe(EVENTS_MOCK[0].slug);
+    expect(order.createdAt).toBe("2026-10-01T10:00:00.000Z");
+  });
+
+  it("accepts a serialized date string", () => {
+    const serialized = { ...RECORD, createdAt: "2026-10-01T10:00:00.000Z" as unknown as Date };
+    expect(toOrderFromRecord(serialized, EVENTS_MOCK[0]).createdAt).toBe(
+      "2026-10-01T10:00:00.000Z",
+    );
+  });
+});
+
+describe("getOrderNumber", () => {
+  it("uses the first 8 hex of the id, uppercased", () => {
+    expect(getOrderNumber(RECORD.id)).toBe("TK-ABCDEF12");
+  });
+});
+
+describe("toTicketRows", () => {
+  const line = { unitPrice: 1, amount: 1 };
+  it("builds consecutive rows across lines with seats and attendee", () => {
+    const rows = toTicketRows({
+      ...RECORD,
+      lines: [
+        { ...line, zoneId: "g", zoneName: "General", quantity: 1, seatLabels: [] },
+        { ...line, zoneId: "o", zoneName: "Oriente", quantity: 2, seatLabels: ["C12", "C13"] },
+      ],
+    });
+    expect(rows).toEqual([
+      { orderId: RECORD.id, sequence: 1, qrCode: "TK-ABCDEF12-01", zoneName: "General", seatLabel: null, attendeeName: "Ana Torres" },
+      { orderId: RECORD.id, sequence: 2, qrCode: "TK-ABCDEF12-02", zoneName: "Oriente", seatLabel: "C12", attendeeName: "Ana Torres" },
+      { orderId: RECORD.id, sequence: 3, qrCode: "TK-ABCDEF12-03", zoneName: "Oriente", seatLabel: "C13", attendeeName: "Ana Torres" },
+    ]);
+  });
+
+  it("returns [] when quantity is 0", () => {
+    const lines = [{ ...line, zoneId: "g", zoneName: "General", quantity: 0, seatLabels: [] }];
+    expect(toTicketRows({ ...RECORD, lines })).toEqual([]);
+  });
+});
+
+describe("getConfirmationStatus", () => {
+  const slug = EVENTS_MOCK[0].slug;
+  it("returns not-found for null or another event", () => {
+    expect(getConfirmationStatus(null, slug)).toBe("not-found");
+    expect(getConfirmationStatus(RECORD, "otro-evento")).toBe("not-found");
+  });
+
+  it("returns the record status otherwise", () => {
+    for (const status of ["pending", "paid", "failed", "cancelled"] as const) {
+      expect(getConfirmationStatus({ ...RECORD, status }, slug)).toBe(status);
+    }
   });
 });
 
 const NOW = new Date("2026-09-29T12:00:00-05:00");
-const demoOrders = getDemoOrders({ fullName: "Maria Perez", email: "maria@example.com" });
+const makeOrder = (number: string, date: string): Order => ({
+  ...toOrderFromRecord(RECORD, EVENTS_MOCK[0]),
+  number,
+  event: { ...toOrderEventSnapshot(EVENTS_MOCK[0]), date },
+});
+const demoOrders = [
+  makeOrder("TK-24817", "2026-10-15T20:00:00-05:00"),
+  makeOrder("TK-24790", "2026-11-20T20:00:00-05:00"),
+  makeOrder("TK-23105", "2026-03-01T20:00:00-05:00"),
+];
 
 describe("toOrderEventSnapshot", () => {
   it("copies only the fields the order needs", () => {
@@ -125,66 +239,41 @@ describe("splitOrdersByTime", () => {
   });
 });
 
-describe("getUserOrders", () => {
-  it("matches by account or buyer email, ignoring case", () => {
-    const guestOrder: Order = {
-      ...demoOrders[0],
-      number: "TK-2",
-      accountEmail: null,
-      buyer: { ...demoOrders[0].buyer, email: "Ana@Example.com" },
-    };
-    const otherOrder: Order = {
-      ...demoOrders[0],
-      number: "TK-3",
-      accountEmail: "otro@example.com",
-      buyer: { ...demoOrders[0].buyer, email: "otro@example.com" },
-    };
-    const orders = [demoOrders[0], guestOrder, otherOrder];
-    expect(getUserOrders(orders, "MARIA@example.com").map((order) => order.number)).toEqual([
-      "TK-24817",
-    ]);
-    expect(getUserOrders(orders, "ana@example.com").map((order) => order.number)).toEqual(["TK-2"]);
+describe("toUserOrders", () => {
+  const rec = (id: string, eventSlug: string): OrderRecord => ({ ...RECORD, id, eventSlug });
+
+  it("maps known events and counts unknown ones", () => {
+    const result = toUserOrders(
+      [rec("aaaaaaaa-1", EVENTS_MOCK[0].slug), rec("bbbbbbbb-2", "gone-event")],
+      EVENTS_MOCK,
+    );
+    expect(result.orders.map((order) => order.number)).toEqual(["TK-AAAAAAAA"]);
+    expect(result.orders[0].event.slug).toBe(EVENTS_MOCK[0].slug);
+    expect(result.unavailableCount).toBe(1);
+  });
+
+  it("returns empty for no records", () => {
+    expect(toUserOrders([], EVENTS_MOCK)).toEqual({ orders: [], unavailableCount: 0 });
+  });
+
+  it("keeps the input order", () => {
+    const result = toUserOrders(
+      [rec("cccccccc-3", EVENTS_MOCK[1].slug), rec("dddddddd-4", EVENTS_MOCK[0].slug)],
+      EVENTS_MOCK,
+    );
+    expect(result.orders.map((order) => order.number)).toEqual(["TK-CCCCCCCC", "TK-DDDDDDDD"]);
   });
 });
 
 describe("getCheckoutPrefill", () => {
-  const user = { fullName: "Ana Torres", email: "ana@test.pe" };
-  const baseOrder = getDemoOrders({ fullName: "Demo", email: "demo@test.pe" })[0];
-  const makeOrder = (number: string, createdAt: string, documentNumber: string): Order => ({
-    ...baseOrder,
-    number,
-    createdAt,
-    accountEmail: "ana@test.pe",
-    buyer: { ...baseOrder.buyer, documentType: "dni", documentNumber, phone: "987654321" },
-  });
-
   it("returns nothing without a user", () => {
-    expect(getCheckoutPrefill(null, [])).toEqual({});
+    expect(getCheckoutPrefill(null)).toEqual({});
   });
 
   it("uses the account name and email", () => {
-    expect(getCheckoutPrefill(user, [])).toEqual({
+    expect(getCheckoutPrefill({ fullName: "Ana Torres", email: "ana@test.pe" })).toEqual({
       fullName: "Ana Torres",
       email: "ana@test.pe",
-    });
-  });
-
-  it("adds document and phone from the user's latest order", () => {
-    const orders = [
-      makeOrder("TK-1", "2026-09-01T10:00:00Z", "11111111"),
-      makeOrder("TK-2", "2026-09-20T10:00:00Z", "22222222"),
-      {
-        ...makeOrder("TK-3", "2026-09-25T10:00:00Z", "33333333"),
-        accountEmail: "otro@test.pe",
-        buyer: { ...baseOrder.buyer, email: "otro@test.pe", documentNumber: "33333333" },
-      },
-    ];
-    expect(getCheckoutPrefill(user, orders)).toEqual({
-      fullName: "Ana Torres",
-      email: "ana@test.pe",
-      documentType: "dni",
-      documentNumber: "22222222",
-      phone: "987654321",
     });
   });
 });
