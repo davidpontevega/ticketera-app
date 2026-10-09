@@ -22,6 +22,7 @@ import {
 import { getEventHref } from "@/modules/event";
 
 import { changeEventStatusAction, deleteEventAction } from "../actions/organizer-event.actions";
+import { getOrganizerEditEventPath } from "../constants/organizer.constants";
 import type { EventAdminActionState, OrganizerDbEventStatus, OrganizerEventSummary } from "../types/organizer.types";
 
 export interface OrganizerEventActionsProps {
@@ -85,6 +86,11 @@ export function OrganizerEventActions({ event }: OrganizerEventActionsProps) {
           {event.status === "published" && (
             <DropdownMenuItem render={<Link href={getEventHref(event.slug)} />}>
               Ver evento
+            </DropdownMenuItem>
+          )}
+          {event.status !== "cancelled" && (
+            <DropdownMenuItem render={<Link href={getOrganizerEditEventPath(event.id)} />}>
+              Editar
             </DropdownMenuItem>
           )}
           {event.status === "draft" && (

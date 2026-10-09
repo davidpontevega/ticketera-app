@@ -3,22 +3,16 @@ export type { OrganizerShellProps } from "./components/organizer-shell";
 export { OrganizerDashboard } from "./components/organizer-dashboard";
 export { EventForm } from "./components/event-form";
 
-export { useOrganizerStore } from "./store/organizer.store";
-export type { OrganizerState } from "./store/organizer.store";
-
 export { ORGANIZER_PATH, ORGANIZER_NEW_EVENT_PATH, ORGANIZER_NAV } from "./constants/organizer.constants";
 export type { OrganizerNavItem } from "./constants/organizer.constants";
 export { validateEventForm } from "./schemas/event-form.schema";
 export {
   getEventPriceFrom,
-  getOrganizerEvents,
   getOrganizerKpis,
   toEventIsoDate,
 } from "./utils/organizer.utils";
 
 export type {
   EventFormValues,
-  OrganizerEvent,
   OrganizerEventStatus,
-  OrganizerTicketTier,
 } from "./types/organizer.types";

@@ -38,7 +38,7 @@ export function EventCoverField({ id, value, error, onChange }: EventCoverFieldP
       return;
     }
     if (file.size > EVENT_COVER_MAX_BYTES) {
-      setFileError("La imagen debe pesar menos de 1 MB");
+      setFileError("La imagen debe pesar menos de 500 KB");
       return;
     }
     setFileError(null);
@@ -91,7 +91,7 @@ export function EventCoverField({ id, value, error, onChange }: EventCoverFieldP
         <ImagePlus className="size-8 text-primary" aria-hidden />
         <span className="font-semibold">Arrastra una imagen o haz clic para subirla</span>
         <span className="text-sm text-muted-foreground">
-          JPG o PNG, horizontal (16:9), hasta 1 MB
+          JPG o PNG, horizontal (16:9), hasta 500 KB
         </span>
         <input
           id={id}

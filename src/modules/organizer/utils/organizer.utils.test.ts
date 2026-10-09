@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { ORGANIZER_EVENTS_MOCK } from "../mocks/organizer.mock";
-import type { OrganizerEvent, OrganizerEventSummary } from "../types/organizer.types";
+import type { OrganizerEventSummary } from "../types/organizer.types";
 import {
   filterOrganizerEvents,
   getEventCapacity,
   getEventPriceFrom,
   getEventStatusChangeError,
-  getOrganizerEvents,
   getOrganizerKpis,
   summarizeOrganizerEvents,
   toEventIsoDate,
@@ -15,11 +13,9 @@ import {
   type PaidOrderRow,
 } from "./organizer.utils";
 
-const [viveLatino, , , draft] = ORGANIZER_EVENTS_MOCK;
-
 describe("event amounts", () => {
   it("computes capacity", () => {
-    expect(getEventCapacity(viveLatino.tiers)).toBe(8000);
+    expect(getEventCapacity([{ price: 10, quantity: 5000 }, { price: 20, quantity: 3000 }])).toBe(8000);
     expect(getEventCapacity([{ price: 10, quantity: Number.NaN }])).toBe(0);
   });
 
@@ -131,50 +127,7 @@ describe("getOrganizerKpis", () => {
   });
 });
 
-describe("getOrganizerEvents", () => {
-  const own: OrganizerEvent = {
-    ...draft,
-    id: "evt-1",
-    ownerEmail: "maria@example.com",
-    updatedAt: "2026-09-29T10:00:00-05:00",
-  };
-  const replacedDemo: OrganizerEvent = {
-    ...draft,
-    ownerEmail: "maria@example.com",
-    name: "Feria editada",
-    updatedAt: "2026-09-28T10:00:00-05:00",
-  };
-  const other: OrganizerEvent = { ...own, id: "evt-2", ownerEmail: "otro@example.com" };
-
-  it("merges the user events with the demo events by id", () => {
-    const events = getOrganizerEvents(
-      [own, replacedDemo, other],
-      ORGANIZER_EVENTS_MOCK,
-      "MARIA@example.com",
-    );
-    expect(events.map((event) => event.id)).toEqual([
-      "evt-1",
-      "demo-feria-familiar",
-      "demo-vive-latino-peru",
-      "demo-romeo-y-julieta",
-      "demo-disney-on-ice",
-    ]);
-    expect(events[1].name).toBe("Feria editada");
-  });
-
-  it("does not show other users events", () => {
-    const events = getOrganizerEvents([other], ORGANIZER_EVENTS_MOCK, "maria@example.com");
-    expect(events).toHaveLength(ORGANIZER_EVENTS_MOCK.length);
-  });
-});
-
 describe("filterOrganizerEvents", () => {
-  it("filters mock events by status", () => {
-    expect(filterOrganizerEvents(ORGANIZER_EVENTS_MOCK, "all")).toHaveLength(4);
-    expect(filterOrganizerEvents(ORGANIZER_EVENTS_MOCK, "published")).toHaveLength(3);
-    expect(filterOrganizerEvents(ORGANIZER_EVENTS_MOCK, "draft")).toEqual([draft]);
-  });
-
   it("with summaries, excludes cancelled from published but keeps it in all", () => {
     const summaries: Pick<OrganizerEventSummary, "status">[] = [
       { status: "published" },

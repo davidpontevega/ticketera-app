@@ -3,14 +3,12 @@ import { getTicketTotals, type TicketLine } from "@/modules/ticket";
 import type {
   EventStatusChangeError,
   OrganizerDbEventStatus,
-  OrganizerEvent,
   OrganizerEventFilter,
   OrganizerEventSummary,
   OrganizerKpis,
-  OrganizerTicketTier,
 } from "../types/organizer.types";
 
-type TierAmounts = Pick<OrganizerTicketTier, "price" | "quantity">;
+type TierAmounts = { price: number; quantity: number };
 
 export function createId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
@@ -32,7 +30,7 @@ export function getEventCapacity(tiers: readonly TierAmounts[]): number {
 
 // Menor precio > 0 (null si no hay ninguno).
 export function getEventPriceFrom(
-  tiers: readonly Pick<OrganizerTicketTier, "price">[],
+  tiers: readonly Pick<TierAmounts, "price">[],
 ): number | null {
   const prices = tiers
     .map((tier) => tier.price)
@@ -94,20 +92,6 @@ export function getOrganizerKpis(
     }),
     { sold: 0, revenue: 0, published: 0 },
   );
-}
-
-// Eventos del usuario (mas recientes primero) + los de ejemplo que no reemplazo (mismo id).
-export function getOrganizerEvents(
-  stored: readonly OrganizerEvent[],
-  demo: readonly OrganizerEvent[],
-  ownerEmail: string,
-): OrganizerEvent[] {
-  const email = ownerEmail.trim().toLowerCase();
-  const own = stored
-    .filter((event) => event.ownerEmail?.toLowerCase() === email)
-    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
-  const ownIds = new Set(own.map((event) => event.id));
-  return [...own, ...demo.filter((event) => !ownIds.has(event.id))];
 }
 
 // Tabla D3 de la spec 030. cancelled es terminal; cualquier transicion no listada es invalid-transition.

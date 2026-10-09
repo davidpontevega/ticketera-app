@@ -16,6 +16,7 @@ export interface EventTierFieldsProps {
   onChange: (index: number, field: keyof Omit<EventFormTier, "id">, value: string) => void;
   onAdd: () => void;
   onRemove: (index: number) => void;
+  locked?: boolean; // sin edicion ni alta/baja
 }
 
 const numberFormatter = new Intl.NumberFormat("es-PE");
@@ -37,6 +38,7 @@ export function EventTierFields({
   onChange,
   onAdd,
   onRemove,
+  locked = false,
 }: EventTierFieldsProps) {
   const capacity = getEventCapacity(
     tiers.map((tier) => ({
@@ -92,6 +94,7 @@ export function EventTierFields({
                       }
                       min={column.field === "name" ? undefined : 0}
                       placeholder={column.placeholder}
+                      disabled={locked}
                       aria-invalid={Boolean(error)}
                       aria-describedby={error ? `${id}-error` : undefined}
                       onChange={(event) => onChange(index, column.field, event.target.value)}
@@ -106,7 +109,7 @@ export function EventTierFields({
                 variant="ghost"
                 size="icon"
                 aria-label={`Quitar tipo de entrada ${index + 1}`}
-                disabled={tiers.length === 1}
+                disabled={locked || tiers.length === 1}
                 onClick={() => onRemove(index)}
                 className="mt-6 size-10 sm:mt-0.5"
               >
@@ -118,7 +121,7 @@ export function EventTierFields({
       </ul>
       {errors.tiers && <FieldError>{errors.tiers}</FieldError>}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-        <Button type="button" variant="outline" onClick={onAdd} className="h-10">
+        <Button type="button" variant="outline" disabled={locked} onClick={onAdd} className="h-10">
           <Plus aria-hidden />
           Agregar tipo de entrada
         </Button>

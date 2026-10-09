@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { EventFormValues } from "../types/organizer.types";
+
 const requireRole = vi.fn();
 vi.mock("@/modules/user", () => ({
   ORGANIZER_AREA_ROLES: ["super_admin", "admin", "organizer"],
@@ -15,12 +17,25 @@ vi.mock("../services/organizer-event-admin.service", () => ({
   setEventFeatured: (...args: unknown[]) => setEventFeatured(...args),
 }));
 
+const createEvent = vi.fn();
+const updateEvent = vi.fn();
+vi.mock("../services/organizer-event-write.service", () => ({
+  createEvent: (...args: unknown[]) => createEvent(...args),
+  updateEvent: (...args: unknown[]) => updateEvent(...args),
+}));
+
 const revalidatePath = vi.fn();
 vi.mock("next/cache", () => ({
   revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
-const { changeEventStatusAction, deleteEventAction, setEventFeaturedAction } = await import(
+const {
+  changeEventStatusAction,
+  createEventAction,
+  deleteEventAction,
+  setEventFeaturedAction,
+  updateEventAction,
+} = await import(
   "./organizer-event.actions"
 );
 
@@ -41,6 +56,8 @@ beforeEach(() => {
   changeEventStatus.mockResolvedValue({ ok: true });
   deleteEvent.mockResolvedValue({ ok: true });
   setEventFeatured.mockResolvedValue({ ok: true });
+  createEvent.mockResolvedValue({ ok: true, eventId: VALID_EVENT_ID });
+  updateEvent.mockResolvedValue({ ok: true });
 });
 
 describe("requireRole guard (AC6)", () => {
@@ -390,5 +407,112 @@ describe("setEventFeaturedAction", () => {
 
     expect(result).toEqual({ status: "success", message: "Evento ya no destacado" });
     expect(revalidatePath).toHaveBeenCalledWith("/organizer");
+  });
+});
+
+const VALID_VALUES: EventFormValues = {
+  name: "Festival de Verano",
+  category: "concerts",
+  description: "Una descripcion suficientemente larga",
+  date: "2099-01-01",
+  time: "20:00",
+  venue: "Estadio",
+  city: "Lima",
+  imageUrl: "data:image/png;base64,AAA",
+  tiers: [{ id: "t1", name: "General", price: "50", quantity: "100" }],
+};
+const PUBLISH = { values: VALID_VALUES, intent: "publish" as const };
+
+describe("createEventAction", () => {
+  it("requireRole corre primero: si rechaza no se valida ni se escribe", async () => {
+    requireRole.mockRejectedValue(new Error("NEXT_REDIRECT"));
+    await expect(createEventAction(PUBLISH)).rejects.toThrow();
+    expect(requireRole).toHaveBeenCalledWith(["super_admin", "admin", "organizer"]);
+    expect(createEvent).not.toHaveBeenCalled();
+  });
+
+  it("exito crea con el viewer, revalida y devuelve el id", async () => {
+    expect(await createEventAction(PUBLISH)).toEqual({ status: "success", eventId: VALID_EVENT_ID });
+    expect(createEvent).toHaveBeenCalledWith(PUBLISH, VIEWER);
+    expect(revalidatePath).toHaveBeenCalledWith("/organizer");
+  });
+
+  it("borrador sin fecha devuelve fieldErrors sin escribir", async () => {
+    const result = await createEventAction({ values: { ...VALID_VALUES, date: "" }, intent: "draft" });
+    expect(result).toMatchObject({ status: "error", fieldErrors: { date: expect.any(String) } });
+    expect(createEvent).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["sin tiers", { tiers: [] }, "tiers"],
+    ["fecha pasada", { date: "2000-01-01" }, "date"],
+    ["sin portada", { imageUrl: "" }, "imageUrl"],
+    ["portada con formato invalido", { imageUrl: "javascript:alert(1)" }, "imageUrl"],
+    ["portada https de otro host", { imageUrl: "https://evil.example.com/a.jpg" }, "imageUrl"],
+    ["portada http", { imageUrl: "http://images.unsplash.com/a.jpg" }, "imageUrl"],
+    ["precio fuera de rango", { tiers: [{ id: "t1", name: "General", price: "100000000", quantity: "100" }] }, "tiers.0.price"],
+    ["cantidad fuera de rango", { tiers: [{ id: "t1", name: "General", price: "50", quantity: "2147483648" }] }, "tiers.0.quantity"],
+    ["portada demasiado pesada", { imageUrl: "data:image/png;base64," + "A".repeat(700_000) }, "imageUrl"],
+  ])("publicar %s devuelve fieldErrors sin escribir", async (_label, patch, field) => {
+    const result = await createEventAction({ values: { ...VALID_VALUES, ...patch }, intent: "publish" });
+    expect(result).toMatchObject({ status: "error", fieldErrors: { [field]: expect.any(String) } });
+    expect(createEvent).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("unknown mapea al mensaje generico", async () => {
+    createEvent.mockResolvedValue({ ok: false, error: "unknown" });
+    expect(await createEventAction(PUBLISH)).toEqual({
+      status: "error",
+      message: "No se pudo guardar, intenta de nuevo",
+    });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateEventAction", () => {
+  it("requireRole corre primero", async () => {
+    requireRole.mockRejectedValue(new Error("NEXT_REDIRECT"));
+    await expect(updateEventAction(VALID_EVENT_ID, PUBLISH)).rejects.toThrow();
+    expect(updateEvent).not.toHaveBeenCalled();
+  });
+
+  it("id invalido devuelve not-found sin llamar al servicio", async () => {
+    const result = await updateEventAction("no-uuid", PUBLISH);
+    expect(result).toMatchObject({ status: "error", message: "No se encontro el evento o no tienes permiso" });
+    expect(updateEvent).not.toHaveBeenCalled();
+  });
+
+  it("exito actualiza con el viewer, revalida y devuelve el id", async () => {
+    expect(await updateEventAction(VALID_EVENT_ID, PUBLISH)).toEqual({ status: "success", eventId: VALID_EVENT_ID });
+    expect(updateEvent).toHaveBeenCalledWith(VALID_EVENT_ID, PUBLISH, VIEWER);
+    expect(revalidatePath).toHaveBeenCalledWith("/organizer");
+  });
+
+  it("fecha pasada no la rechaza la action (la decide el servicio, D3)", async () => {
+    await updateEventAction(VALID_EVENT_ID, { values: { ...VALID_VALUES, date: "2000-01-01" }, intent: "publish" });
+    expect(updateEvent).toHaveBeenCalled();
+  });
+
+  it("valida campos en servidor", async () => {
+    const result = await updateEventAction(VALID_EVENT_ID, { values: { ...VALID_VALUES, tiers: [] }, intent: "publish" });
+    expect(result).toMatchObject({ status: "error", fieldErrors: { tiers: expect.any(String) } });
+    expect(updateEvent).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["tiers-locked", "Este evento tiene ventas: no se pueden cambiar tipos de entrada ni precios", undefined],
+    ["past-date", "Elige una fecha futura", "date"],
+    ["no-tiers", "Agrega al menos un tipo de entrada", "tiers"],
+    ["not-found", "No se encontro el evento o no tienes permiso", undefined],
+  ])("%s mapea mensaje (y campo)", async (error, message, field) => {
+    updateEvent.mockResolvedValue({ ok: false, error });
+    const result = await updateEventAction(VALID_EVENT_ID, PUBLISH);
+    expect(result).toEqual({
+      status: "error",
+      message,
+      ...(field && { fieldErrors: { [field]: message } }),
+    });
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

@@ -4,6 +4,7 @@ import type { OrganizerEventFilter } from "../types/organizer.types";
 
 export const ORGANIZER_PATH = "/organizer";
 export const ORGANIZER_NEW_EVENT_PATH = "/organizer/events/new";
+export const getOrganizerEditEventPath = (id: string) => `/organizer/events/${id}/edit`;
 export const ORGANIZER_EVENTS_ANCHOR = "my-events";
 
 export interface OrganizerNavItem {
@@ -27,5 +28,5 @@ export const ORGANIZER_EVENT_FILTERS: readonly { value: OrganizerEventFilter; la
   { value: "draft", label: "Borradores" },
 ];
 
-export const EVENT_COVER_MAX_BYTES = 1024 * 1024; // 1 MB: la imagen se guarda en localStorage
+export const EVENT_COVER_MAX_BYTES = 500 * 1024; // data URL en el body de la server action (limite 1 MB)
 export const EVENT_COVER_TYPES = ["image/jpeg", "image/png"] as const;

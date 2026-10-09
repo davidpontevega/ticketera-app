@@ -7,8 +7,6 @@ import type {
   EventFormMode,
   EventFormTier,
   EventFormValues,
-  OrganizerEvent,
-  OrganizerEventStatus,
 } from "../types/organizer.types";
 import { createId, toEventIsoDate } from "../utils/organizer.utils";
 
@@ -18,28 +16,53 @@ const nameSchema = z.string().trim().min(3, "Ingresa el nombre del evento (minim
 
 const tierSchema = z.object({
   name: z.string().trim().min(2, "Ingresa el nombre del tipo"),
-  price: z.string().refine((value) => Number(value) > 0, "Ingresa un precio mayor a 0"),
+  price: z
+    .string()
+    .refine((value) => Number(value) > 0, "Ingresa un precio mayor a 0")
+    .refine((value) => Number(value) <= 99_999_999.99, "El precio es demasiado alto"),
   quantity: z
     .string()
     .refine(
       (value) => Number.isInteger(Number(value)) && Number(value) >= 1,
       "Ingresa una cantidad mayor a 0",
-    ),
+    )
+    .refine((value) => Number(value) <= 2_147_483_647, "La cantidad es demasiado alta"),
 });
+
+// Portada: data URL jpeg/png (subida) o https de images.unsplash.com (unico host de next.config.ts),
+// con tope de largo (la action la valida en servidor).
+export const EVENT_IMAGE_MAX_LENGTH = 700_000;
+// Anclado con $: sin espacios ni caracteres de control en la URL, y solo base64 valido en el data URL.
+const IMAGE_URL_PATTERN =
+  /^(?:data:image\/(?:jpeg|png);base64,[A-Za-z0-9+/]+={0,2}|https:\/\/images\.unsplash\.com\/[^\s\u0000-\u001f\u007f]*)$/;
+const imageFormatSchema = z
+  .string()
+  .max(EVENT_IMAGE_MAX_LENGTH, "La imagen es demasiado pesada")
+  .refine((value) => value === "" || IMAGE_URL_PATTERN.test(value), "Formato de imagen no valido");
+
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Elige la fecha");
+const timeSchema = z.string().regex(/^\d{2}:\d{2}$/, "Elige la hora de inicio");
 
 const publishSchema = z.object({
   name: nameSchema,
   category: z.enum(categoryIds, "Elige una categoria"),
   description: z.string().trim().min(20, "Describe el evento en al menos 20 caracteres"),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Elige la fecha"),
-  time: z.string().regex(/^\d{2}:\d{2}$/, "Elige la hora de inicio"),
+  date: dateSchema,
+  time: timeSchema,
   venue: z.string().trim().min(2, "Ingresa el lugar"),
   city: z.string().trim().min(2, "Ingresa la ciudad"),
-  imageUrl: z.string().min(1, "Sube una imagen de portada"),
+  imageUrl: z.string().min(1, "Sube una imagen de portada").pipe(imageFormatSchema),
   tiers: z.array(tierSchema).min(1, "Agrega al menos un tipo de entrada"),
 });
 
-const draftSchema = z.object({ name: nameSchema });
+// events.starts_at es NOT NULL: el borrador tambien exige fecha y hora.
+const draftSchema = z.object({
+  name: nameSchema,
+  category: z.enum(categoryIds, "Elige una categoria"),
+  date: dateSchema,
+  time: timeSchema,
+  imageUrl: imageFormatSchema,
+});
 
 export function createEmptyTier(): EventFormTier {
   return { id: createId("tier"), name: "", price: "", quantity: "" };
@@ -61,7 +84,7 @@ export function createEventFormValues(): EventFormValues {
   return { ...EVENT_FORM_DEFAULT, tiers: [createEmptyTier(), createEmptyTier()] };
 }
 
-// Borrador: solo el nombre. Publicar: todo, con la fecha en el futuro. Errores por campo
+// Borrador: nombre, fecha y hora. Publicar: todo, con la fecha en el futuro. Errores por campo
 // ("name", "tiers.0.price", ...), primer mensaje de cada uno.
 export function validateEventForm(
   values: EventFormValues,
@@ -80,58 +103,4 @@ export function validateEventForm(
     if (iso && Date.parse(iso) <= now.getTime()) errors.date = "Elige una fecha futura";
   }
   return errors;
-}
-
-interface ToOrganizerEventOptions {
-  status: OrganizerEventStatus;
-  ownerEmail: string;
-  previous?: OrganizerEvent; // al editar: conserva id, ventas y datos de catalogo
-}
-
-export function toOrganizerEvent(
-  values: EventFormValues,
-  { status, ownerEmail, previous }: ToOrganizerEventOptions,
-): OrganizerEvent {
-  const soldByTier = new Map(previous?.tiers.map((tier) => [tier.id, tier.sold]));
-  return {
-    id: previous?.id ?? createId("evt"),
-    status,
-    ownerEmail,
-    catalogSlug: previous?.catalogSlug ?? null,
-    name: values.name.trim(),
-    category: values.category,
-    description: values.description.trim(),
-    date: values.date,
-    time: values.time,
-    venue: values.venue.trim(),
-    city: values.city.trim(),
-    imageUrl: values.imageUrl,
-    tiers: values.tiers.map((tier) => ({
-      id: tier.id,
-      name: tier.name.trim(),
-      price: Number(tier.price) || 0,
-      quantity: Math.max(0, Math.trunc(Number(tier.quantity) || 0)),
-      sold: soldByTier.get(tier.id) ?? 0,
-    })),
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-export function toEventFormValues(event: OrganizerEvent): EventFormValues {
-  return {
-    name: event.name,
-    category: event.category,
-    description: event.description,
-    date: event.date,
-    time: event.time,
-    venue: event.venue,
-    city: event.city,
-    imageUrl: event.imageUrl,
-    tiers: event.tiers.map((tier) => ({
-      id: tier.id,
-      name: tier.name,
-      price: tier.price ? String(tier.price) : "",
-      quantity: tier.quantity ? String(tier.quantity) : "",
-    })),
-  };
 }
