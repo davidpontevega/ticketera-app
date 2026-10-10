@@ -1,6 +1,6 @@
 # 023 — UI de checkout con Stripe hosted (fase 2 de la spec 022)
 
-Estado: borrador
+Estado: implementada (pendiente AC12 manual con Stripe)
 
 ## Objetivo
 Fase 2 de `docs/specs/022-stripe-checkout-payments.md` (la API ya existe: `POST /api/checkout/session`,

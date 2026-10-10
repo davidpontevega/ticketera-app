@@ -1,6 +1,6 @@
 # 031 — Hero de la landing con eventos reales + destacar desde el panel de organizador
 
-Estado: aprobada
+Estado: implementada
 Aprobacion humana: aprobada
 
 ## Objetivo
@@ -208,3 +208,6 @@ Orden: (T1 ‖ T2) -> T3 -> T4 -> T5. T1 es independiente y puede terminarse en 
   `docs/specs/030-organizer-event-crud.md`): reutiliza `setEventFeaturedAction` sin cambios.
 - Migrar el resto del catalogo publico (`/events`, busqueda, tendencias, mas vendidos) de `EVENTS_MOCK` a la DB
   (Fase 3 ya anotada en `docs/specs/029-organizer-dashboard-real-data.md`).
+
+## Log de review
+- Sin review formal registrado; codigo y tests presentes (comprobado en P1-09, 2026-10-10). Suite completa (552 tests), tsc, eslint y build en verde.

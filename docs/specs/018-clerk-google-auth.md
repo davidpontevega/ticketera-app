@@ -254,7 +254,7 @@ Ninguna bloquea; defaults tomados, ajustables al aprobar:
 
 ## Estado
 - Aprobacion humana: aprobada (2026-09-30)
-- Fase: aprobado
+- Fase: implementada (estado actualizado en P1-09, 2026-10-10)
 - Log de review:
   - 2026-09-30 reviewer it.1: APPROVED. tsc/lint/test(215)/build ok. AC1 parcial (generate sin diffs, SQL solo ALTER
     deleted_at; migrate/verify sin DATABASE_URL), AC2-AC4 no verificables en entorno, AC5-AC7 ok. 3 hallazgos

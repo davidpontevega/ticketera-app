@@ -148,5 +148,5 @@ No bloqueantes (defaults tomados):
 
 ## Estado
 - Aprobacion humana: aprobada
-- Fase: spec
-- Log de review: -
+- Fase: implementada (estado actualizado en P1-09, 2026-10-10)
+- Log de review: Sin review formal registrado; codigo y tests presentes (comprobado en P1-09, 2026-10-10). Suite completa (552 tests), tsc, eslint y build en verde.

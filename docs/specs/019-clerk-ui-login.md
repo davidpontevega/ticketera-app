@@ -213,6 +213,6 @@ Ninguna bloquea; defaults tomados, ajustables al aprobar:
   - 2026-09-30 reviewer iter 1: APPROVED. AC6-AC8 verificados (tsc/lint/test 224/build ok; proxy.ts sin proteccion;
     sin middleware.ts; sin colision de rutas; AC7 limpio). AC1-AC5 revisados solo en el codigo: falta probarlos con
     keys reales de Clerk. Pendiente: commitear la fase 018 por separado de la 019.
-- Fase: aprobado
+- Fase: implementada (estado actualizado en P1-09, 2026-10-10)
 - Decisiones de aprobacion: loop /organizer<->/login entre 019 y 020 se acepta como estado dev temporal (spec 020 se
   ejecuta enseguida despues); localizacion `esES` confirmada.
