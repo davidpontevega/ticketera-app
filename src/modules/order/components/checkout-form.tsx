@@ -11,7 +11,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { useCountdown } from "@/hooks/use-countdown";
 import { useIsClient } from "@/hooks/use-is-client";
 import { focusFormField } from "@/lib/focus-form-field";
-import { getAuthHref, useAuthStore } from "@/modules/auth";
+import { getAuthHref, useCurrentUser, type AuthUser } from "@/modules/auth";
 import { getEventHref, type EventEntity } from "@/modules/event";
 import { getTicketLines, useTicketSelectionStore, type VenueLayout } from "@/modules/ticket";
 
@@ -40,15 +40,30 @@ function focusFirstError(errors: CheckoutErrors) {
   if (firstField) focusFormField(getCheckoutFieldId(firstField));
 }
 
-export function CheckoutForm({ event, layout, paymentCancelled = false }: CheckoutFormProps) {
+export function CheckoutForm(props: CheckoutFormProps) {
   const isClient = useIsClient();
+  const { user, isLoaded } = useCurrentUser();
+
+  // Antes de hidratar no se conoce la seleccion guardada, y Clerk carga el usuario async:
+  // el prefill se calcula recien con ambos listos (sin hydration mismatch).
+  if (!isClient || !isLoaded) {
+    return <div aria-busy className="h-96 animate-pulse rounded-2xl bg-card" />;
+  }
+
+  return <CheckoutFormBody {...props} user={user} />;
+}
+
+function CheckoutFormBody({
+  event,
+  layout,
+  paymentCancelled = false,
+  user,
+}: CheckoutFormProps & { user: AuthUser | null }) {
   const { eventId, quantities, seatIds } = useTicketSelectionStore();
-  const user = useAuthStore((state) => state.user);
   const countdown = useCountdown(CHECKOUT_HOLD_SECONDS);
 
-  // Autocompletado solo en la carga inicial. El inicializador corre en el navegador con los stores
-  // ya hidratados, y el formulario no se renderiza antes de isClient (sin hydration mismatch).
-  const [prefill] = useState(() => getCheckoutPrefill(useAuthStore.getState().user));
+  // Autocompletado solo en la carga inicial (el cuerpo se monta cuando Clerk ya cargo).
+  const [prefill] = useState(() => getCheckoutPrefill(user));
   const [values, setValues] = useState(() => ({
     ...CHECKOUT_FORM_DEFAULT,
     ...prefill,
@@ -60,12 +75,7 @@ export function CheckoutForm({ event, layout, paymentCancelled = false }: Checko
 
   const eventHref = getEventHref(event.slug);
   const ticketsHref = `${eventHref}/tickets`;
-  const lines = isClient && eventId === event.id ? getTicketLines(layout, quantities, seatIds) : [];
-
-  // Antes de hidratar no se conoce la seleccion guardada en localStorage.
-  if (!isClient) {
-    return <div aria-busy className="h-96 animate-pulse rounded-2xl bg-card" />;
-  }
+  const lines = eventId === event.id ? getTicketLines(layout, quantities, seatIds) : [];
 
   if (lines.length === 0 && !isPlacing) {
     return (

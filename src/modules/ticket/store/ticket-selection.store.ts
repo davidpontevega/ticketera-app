@@ -23,8 +23,8 @@ const INITIAL_SELECTION = {
   seatIds: {},
 } satisfies Pick<TicketSelectionState, "eventId" | "activeZoneId" | "quantities" | "seatIds">;
 
-// Persistido en localStorage (datos de prueba, spec 016): la seleccion sobrevive a un refresh
-// del checkout y a cerrar el navegador. Se ve y se borra en /dev/storage.
+// Persistido en localStorage (spec 016): la seleccion sobrevive a un refresh
+// del checkout y a cerrar el navegador.
 export const useTicketSelectionStore = create<TicketSelectionState>()(
   persist(
     (set) => ({

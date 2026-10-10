@@ -82,9 +82,6 @@ export function SiteFooter() {
 
         <div className="flex flex-col gap-2 text-sm text-background/70 sm:flex-row sm:justify-between">
           <p>© 2026 Ticketera. Todos los derechos reservados.</p>
-          <Link href="/dev/storage" className="w-fit hover:text-primary">
-            Datos de prueba
-          </Link>
         </div>
       </div>
     </footer>
