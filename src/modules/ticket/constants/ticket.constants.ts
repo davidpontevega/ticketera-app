@@ -16,3 +16,6 @@ export const SEAT_OCCUPANCY_BY_AVAILABILITY = {
   "few-left": 0.75,
   "sold-out": 1,
 } as const;
+
+// Stock por defecto de una zona de admision general (seed y capacidad de plantilla).
+export const SEED_GENERAL_ZONE_STOCK = 500;

@@ -114,8 +114,8 @@ describe("changeEventStatus", () => {
 
     const selectWhereArg = selectWhere.mock.calls[0][0] as SQL;
     const updateWhereArg = updateWhere.mock.calls[0][0] as SQL;
-    expect(paramsOf(selectWhereArg)).toContain("organizer-1");
-    expect(paramsOf(updateWhereArg)).toContain("organizer-1");
+    expect(paramsOf(selectWhereArg)).toEqual(["event-1", "organizer-1"]);
+    expect(paramsOf(updateWhereArg)).toEqual(["event-1", "organizer-1", "published"]);
   });
 
   it("admin/super_admin: el WHERE del select y del update no filtran por organizador (sin scope)", async () => {
@@ -126,8 +126,8 @@ describe("changeEventStatus", () => {
 
     const selectWhereArg = selectWhere.mock.calls[0][0] as SQL;
     const updateWhereArg = updateWhere.mock.calls[0][0] as SQL;
-    expect(paramsOf(selectWhereArg)).not.toContain("admin-1");
-    expect(paramsOf(updateWhereArg)).not.toContain("admin-1");
+    expect(paramsOf(selectWhereArg)).toEqual(["event-1"]);
+    expect(paramsOf(updateWhereArg)).toEqual(["event-1", "published"]);
   });
 });
 
@@ -184,8 +184,8 @@ describe("setEventFeatured", () => {
 
     const selectWhereArg = selectWhere.mock.calls[0][0] as SQL;
     const updateWhereArg = updateWhere.mock.calls[0][0] as SQL;
-    expect(paramsOf(selectWhereArg)).not.toContain("admin-1");
-    expect(paramsOf(updateWhereArg)).not.toContain("admin-1");
+    expect(paramsOf(selectWhereArg)).toEqual(["event-1"]);
+    expect(paramsOf(updateWhereArg)).toEqual(["event-1"]);
   });
 });
 
@@ -240,8 +240,8 @@ describe("deleteEvent", () => {
 
     const selectWhereArg = selectWhere.mock.calls[0][0] as SQL;
     const deleteWhereArg = deleteWhere.mock.calls[0][0] as SQL;
-    expect(paramsOf(selectWhereArg)).not.toContain("admin-1");
-    expect(paramsOf(deleteWhereArg)).not.toContain("admin-1");
+    expect(paramsOf(selectWhereArg)).toEqual(["event-1"]);
+    expect(paramsOf(deleteWhereArg)).toEqual(["event-1"]);
   });
 
   it("el WHERE del delete protege con NOT EXISTS ordenes paid/pending (D4)", async () => {

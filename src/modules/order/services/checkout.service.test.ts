@@ -314,9 +314,79 @@ describe("handleStripeEvent", () => {
     expect(select).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
   });
+
+  it("evento con session sin orden no escribe ni emite tickets", async () => {
+    // selectWhere devuelve [] por defecto: session desconocida.
+    await expect(
+      handleStripeEvent({
+        type: "checkout.session.completed",
+        data: { object: { id: "cs_unknown", status: "complete", payment_status: "paid" } },
+      } as never),
+    ).resolves.toBeUndefined();
+
+    expect(select).toHaveBeenCalledTimes(1);
+    expect(update).not.toHaveBeenCalled();
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["checkout.session.async_payment_failed", "failed"],
+    ["checkout.session.expired", "cancelled"],
+  ])("%s sobre una orden pending fija status %s", async (type, status) => {
+    selectWhere.mockResolvedValueOnce([{ id: "order-9", status: "pending", stripeCheckoutSessionId: "cs_9", buyer, lines: [] }]);
+    updateReturning.mockResolvedValueOnce([{ id: "order-9", status, lines: [] }]);
+
+    await handleStripeEvent({ type, data: { object: { id: "cs_9" } } } as never);
+
+    expect(updateSet).toHaveBeenCalledTimes(1);
+    expect(updateSet).toHaveBeenCalledWith(expect.objectContaining({ status }));
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  // RIESGO ACEPTADO (specs 033 y 039): un pago confirmado de una orden ya cancelled o failed
+  // (p. ej. cancelada por el reemplazo de pendientes del mismo comprador, o expirada) NO cambia de
+  // estado ni emite tickets: el cobro queda sin entradas y requiere reconciliacion manual o
+  // reembolso. Este test documenta el comportamiento actual; si se decide manejar esa carrera,
+  // hay que cambiar este test junto con applySessionStatus.
+  it.each(["cancelled", "failed"])(
+    "completed tardio sobre una orden %s no cambia estado ni emite tickets",
+    async (status) => {
+      selectWhere.mockResolvedValueOnce([
+        { id: "order-8", status, stripeCheckoutSessionId: "cs_8", buyer, lines: [{ zoneName: "General", quantity: 1, seatLabels: [] }] },
+      ]);
+
+      await handleStripeEvent({
+        type: "checkout.session.completed",
+        data: { object: { id: "cs_8", status: "complete", payment_status: "paid", payment_intent: "pi_8" } },
+      } as never);
+
+      expect(update).not.toHaveBeenCalled();
+      expect(insert).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("syncOrderWithSession", () => {
+  it("session pending (open/unpaid) no escribe ni emite tickets", async () => {
+    sessionsRetrieve.mockResolvedValue({ id: "cs_p", status: "open", payment_status: "unpaid" });
+    const pendingOrder = { id: "order-p", status: "pending", stripeCheckoutSessionId: "cs_p", buyer, lines: [] };
+    selectWhere.mockResolvedValueOnce([pendingOrder]);
+
+    const result = await syncOrderWithSession("cs_p");
+
+    expect(result).toEqual(pendingOrder);
+    expect(update).not.toHaveBeenCalled();
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("session desconocida devuelve null sin escribir", async () => {
+    sessionsRetrieve.mockResolvedValue({ id: "cs_x", status: "open", payment_status: "unpaid" });
+
+    await expect(syncOrderWithSession("cs_x")).resolves.toBeNull();
+    expect(update).not.toHaveBeenCalled();
+    expect(insert).not.toHaveBeenCalled();
+  });
+
   it("cuando la session esta pagada, aplica el status paid", async () => {
     sessionsRetrieve.mockResolvedValue({
       id: "cs_test_2",

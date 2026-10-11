@@ -1,9 +1,9 @@
 import type { EventAvailability, EventEntity } from "@/modules/event";
 
-// Ruta directa: no se exporta desde el barrel de event (evita ciclo de barrels).
-import { SEED_GENERAL_ZONE_STOCK } from "@/modules/event/utils/event-seed.utils";
-
-import { SEAT_OCCUPANCY_BY_AVAILABILITY } from "../constants/ticket.constants";
+import {
+  SEAT_OCCUPANCY_BY_AVAILABILITY,
+  SEED_GENERAL_ZONE_STOCK,
+} from "../constants/ticket.constants";
 import { VENUE_LAYOUT_BY_CATEGORY, VENUE_TEMPLATES } from "../mocks/venue.mock";
 import type {
   EventAvailabilitySnapshot,

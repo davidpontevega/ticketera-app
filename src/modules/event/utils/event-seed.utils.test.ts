@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { SEED_GENERAL_ZONE_STOCK } from "@/modules/ticket/constants/ticket.constants";
 import { getVenueLayout } from "@/modules/ticket/utils/ticket.utils";
 
 import { EVENTS_MOCK } from "../mocks/event.mock";
 import type { EventEntity } from "../types/event.types";
-import { buildEventSeed, CITY_COORDINATES, SEED_GENERAL_ZONE_STOCK } from "./event-seed.utils";
+import { buildEventSeed, CITY_COORDINATES } from "./event-seed.utils";
 
 const ORGANIZER_ID = "11111111-1111-1111-1111-111111111111";
 

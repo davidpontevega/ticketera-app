@@ -42,6 +42,14 @@ describe("listOrganizerEvents", () => {
 
     expect(requireRole).toHaveBeenCalledWith(["super_admin", "admin", "organizer"]);
     expect(select).toHaveBeenCalledTimes(1);
+    expect(requireRole.mock.invocationCallOrder[0]).toBeLessThan(select.mock.invocationCallOrder[0]);
+  });
+
+  it("si requireRole lanza, no consulta la DB", async () => {
+    requireRole.mockRejectedValue(new Error("forbidden"));
+
+    await expect(listOrganizerEvents()).rejects.toThrow("forbidden");
+    expect(select).not.toHaveBeenCalled();
   });
 
   it("sin eventos devuelve [] con una sola consulta", async () => {

@@ -43,10 +43,21 @@ describe("buildVenueLayoutFromTiers", () => {
   });
 
   it("falls back when numbered stock does not match the seat count", () => {
-    const tiers = seededTiers().map((tier) => ({ ...tier, totalStock: 1 }));
-    const numbered = getVenueLayout(event).zones.some((zone) => zone.seating === "numbered");
-    const layout = buildVenueLayoutFromTiers(event, tiers);
-    expect(layout.id === "general-admission").toBe(numbered);
+    const numberedEvent = EVENTS_MOCK.find((item) =>
+      getVenueLayout(item).zones.some((zone) => zone.seating === "numbered"),
+    );
+    expect(numberedEvent).toBeDefined();
+    const template = getVenueLayout(numberedEvent!);
+    // Mismos nombres que la plantilla; solo las zonas numeradas tienen un stock distinto a sus asientos.
+    const tiers = template.zones.map((zone) => ({
+      id: `uuid-${zone.id}`,
+      name: zone.name,
+      price: zone.price,
+      totalStock: zone.seating === "numbered" ? zone.seats.length + 1 : 500,
+    }));
+    const layout = buildVenueLayoutFromTiers(numberedEvent!, tiers);
+    expect(layout.id).toBe("general-admission");
+    expect(layout.zones.map((zone) => zone.id)).toEqual(tiers.map((tier) => tier.id));
   });
 
   it("falls back when a tier is not in the template", () => {

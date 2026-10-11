@@ -1,10 +1,9 @@
+import { SEED_GENERAL_ZONE_STOCK } from "@/modules/ticket/constants/ticket.constants";
 import { getVenueLayout } from "@/modules/ticket/utils/ticket.utils";
 
 import type { events } from "../db/event.table";
 import type { ticketTiers } from "../db/ticket-tier.table";
 import type { EventEntity } from "../types/event.types";
-
-export const SEED_GENERAL_ZONE_STOCK = 500;
 
 // Centro de cada ciudad (placeholder: ninguna pantalla lee estas columnas todavia).
 export const CITY_COORDINATES: Record<string, { latitude: string; longitude: string }> = {

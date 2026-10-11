@@ -19,7 +19,7 @@ export interface OrganizerDashboardProps {
   events: readonly OrganizerEventSummary[];
 }
 
-// Se renderiza dentro de OrganizerShell, que ya garantiza sesion y rol (guard de servidor).
+// El guard de sesion y rol lo hace el layout de servidor (organizer)/layout.tsx (requireRole); OrganizerShell solo aporta el chrome.
 export function OrganizerDashboard({ events }: OrganizerDashboardProps) {
   const [filter, setFilter] = useState<OrganizerEventFilter>("all");
 
