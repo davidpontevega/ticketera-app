@@ -7,10 +7,9 @@ import {
   getEventPriceFrom,
   getEventStatusChangeError,
   getOrganizerKpis,
-  summarizeOrganizerEvents,
   toEventIsoDate,
+  toOrganizerEventSummaries,
   type OrganizerEventRow,
-  type PaidOrderRow,
 } from "./organizer.utils";
 
 describe("event amounts", () => {
@@ -25,8 +24,8 @@ describe("event amounts", () => {
   });
 });
 
-describe("summarizeOrganizerEvents", () => {
-  const events: OrganizerEventRow[] = [
+describe("toOrganizerEventSummaries", () => {
+  const rows: OrganizerEventRow[] = [
     {
       id: "evt-1",
       slug: "vive-latino-peru",
@@ -37,6 +36,8 @@ describe("summarizeOrganizerEvents", () => {
       imageUrl: "https://example.com/vive-latino.jpg",
       capacity: 8000,
       isFeatured: true,
+      sold: 3,
+      revenue: "535.00",
     },
     {
       id: "evt-2",
@@ -48,59 +49,23 @@ describe("summarizeOrganizerEvents", () => {
       imageUrl: "https://example.com/feria.jpg",
       capacity: 500,
       isFeatured: false,
+      sold: 0,
+      revenue: "0",
     },
   ];
 
-  const paidOrders: PaidOrderRow[] = [
-    {
-      eventSlug: "vive-latino-peru",
-      totalAmount: "360.00",
-      lines: [
-        {
-          zoneId: "general",
-          zoneName: "General",
-          quantity: 2,
-          unitPrice: 180,
-          amount: 360,
-          seatLabels: [],
-        },
-      ],
-    },
-    {
-      eventSlug: "vive-latino-peru",
-      totalAmount: "175.00",
-      lines: [
-        {
-          zoneId: "vip",
-          zoneName: "VIP",
-          quantity: 1,
-          unitPrice: 175,
-          amount: 175,
-          seatLabels: [],
-        },
-      ],
-    },
-  ];
-
-  it("sums sold and revenue only for the matching event slug", () => {
-    const summaries = summarizeOrganizerEvents(events, paidOrders);
+  it("converts revenue text to number and passes sold through", () => {
+    const summaries = toOrganizerEventSummaries(rows);
     expect(summaries[0]).toMatchObject({ sold: 3, revenue: 535 });
-  });
-
-  it("leaves sold and revenue at 0 for events without orders", () => {
-    const summaries = summarizeOrganizerEvents(events, paidOrders);
     expect(summaries[1]).toMatchObject({ sold: 0, revenue: 0 });
+    expect(toOrganizerEventSummaries([{ ...rows[1], revenue: "0.00" }])[0].revenue).toBe(0);
   });
 
-  it("keeps the order and capacity of events, and serializes startsAt as ISO", () => {
-    const summaries = summarizeOrganizerEvents(events, paidOrders);
+  it("keeps order and fields, and serializes startsAt as ISO", () => {
+    const summaries = toOrganizerEventSummaries(rows);
     expect(summaries.map((summary) => summary.id)).toEqual(["evt-1", "evt-2"]);
     expect(summaries[0].capacity).toBe(8000);
     expect(summaries[0].startsAt).toBe("2026-11-15T02:00:00.000Z");
-  });
-
-  it("keeps isFeatured from the row for both true and false", () => {
-    const summaries = summarizeOrganizerEvents(events, paidOrders);
     expect(summaries[0].isFeatured).toBe(true);
     expect(summaries[1].isFeatured).toBe(false);
   });
@@ -115,6 +80,15 @@ describe("getOrganizerKpis", () => {
 
   it("adds up sold and revenue across all events", () => {
     expect(getOrganizerKpis(summaries)).toEqual({ sold: 125, revenue: 1250, published: 1 });
+  });
+
+  it("rounds revenue to cents to avoid float artifacts", () => {
+    expect(
+      getOrganizerKpis([
+        { sold: 1, revenue: 0.1, status: "published" },
+        { sold: 1, revenue: 0.2, status: "published" },
+      ]),
+    ).toEqual({ sold: 2, revenue: 0.3, published: 2 });
   });
 
   it("counts published ignoring draft and cancelled", () => {

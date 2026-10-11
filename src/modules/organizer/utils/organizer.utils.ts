@@ -1,5 +1,3 @@
-import { getTicketTotals, type TicketLine } from "@/modules/ticket";
-
 import type {
   EventStatusChangeError,
   OrganizerDbEventStatus,
@@ -48,50 +46,32 @@ export interface OrganizerEventRow {
   imageUrl: string;
   capacity: number;
   isFeatured: boolean;
+  sold: number;
+  revenue: string; // numeric(10,2) como texto desde SQL
 }
 
-export interface PaidOrderRow {
-  eventSlug: string;
-  totalAmount: string;
-  lines: readonly TicketLine[];
-}
-
-export function summarizeOrganizerEvents(
-  events: readonly OrganizerEventRow[],
-  paidOrders: readonly PaidOrderRow[],
+export function toOrganizerEventSummaries(
+  rows: readonly OrganizerEventRow[],
 ): OrganizerEventSummary[] {
-  return events.map((event) => {
-    const orders = paidOrders.filter((order) => order.eventSlug === event.slug);
-    return {
-      id: event.id,
-      slug: event.slug,
-      title: event.title,
-      status: event.status,
-      startsAt: event.startsAt.toISOString(),
-      city: event.city,
-      imageUrl: event.imageUrl,
-      capacity: event.capacity,
-      isFeatured: event.isFeatured,
-      sold: orders.reduce(
-        (total, order) => total + getTicketTotals(order.lines).quantity,
-        0,
-      ),
-      revenue: orders.reduce((total, order) => total + Number(order.totalAmount), 0),
-    };
-  });
+  return rows.map((row) => ({
+    ...row,
+    startsAt: row.startsAt.toISOString(),
+    revenue: Number(row.revenue),
+  }));
 }
 
 export function getOrganizerKpis(
   events: readonly Pick<OrganizerEventSummary, "sold" | "revenue" | "status">[],
 ): OrganizerKpis {
-  return events.reduce(
-    (kpis, event) => ({
-      sold: kpis.sold + event.sold,
-      revenue: kpis.revenue + event.revenue,
-      published: kpis.published + (event.status === "published" ? 1 : 0),
+  const kpis = events.reduce(
+    (acc, event) => ({
+      sold: acc.sold + event.sold,
+      revenue: acc.revenue + event.revenue,
+      published: acc.published + (event.status === "published" ? 1 : 0),
     }),
     { sold: 0, revenue: 0, published: 0 },
   );
+  return { ...kpis, revenue: Math.round(kpis.revenue * 100) / 100 };
 }
 
 // Tabla D3 de la spec 030. cancelled es terminal; cualquier transicion no listada es invalid-transition.
