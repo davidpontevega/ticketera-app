@@ -1,12 +1,13 @@
 import "server-only";
 
 import { and, eq, isNull } from "drizzle-orm";
+import type Stripe from "stripe";
 
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { users } from "@/modules/user/db/user.table";
 
-import { PAYMENTS_PATH, isConnectEnabled } from "../constants/payment.constants";
+import { PAYMENTS_PATH, PAYMENTS_REFRESH_PATH, isConnectEnabled } from "../constants/payment.constants";
 import type { OnboardingStatus } from "../types/payment.types";
 import { mapAccountToOnboardingStatus } from "../utils/payment.utils";
 
@@ -43,7 +44,7 @@ export async function startConnectOnboarding(user: ConnectUser, origin: string):
     account: accountId,
     type: "account_onboarding",
     return_url: `${origin}${PAYMENTS_PATH}?connect=return`,
-    refresh_url: `${origin}${PAYMENTS_PATH}?connect=refresh`,
+    refresh_url: `${origin}${PAYMENTS_REFRESH_PATH}`,
   });
   return { url: link.url };
 }
@@ -64,4 +65,13 @@ export async function getPayoutAccount(organizerId: string): Promise<{ accountId
     .where(eq(users.id, organizerId))
     .limit(1);
   return row?.accountId && row.status === "complete" ? { accountId: row.accountId } : null;
+}
+
+/** Webhook Connect: sincroniza el estado desde Stripe (retrieve), inmune a eventos desordenados o repetidos. */
+export async function handleConnectEvent(event: Stripe.Event): Promise<void> {
+  if (event.type !== "account.updated") return;
+  const accountId = event.data.object.id;
+  const status = mapAccountToOnboardingStatus(await stripe.accounts.retrieve(accountId));
+  // Cuenta desconocida: el UPDATE no afecta filas (no-op).
+  await db.update(users).set({ stripeOnboardingStatus: status }).where(eq(users.stripeAccountId, accountId));
 }

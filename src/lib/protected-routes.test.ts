@@ -31,6 +31,7 @@ describe("isProtectedRoute", () => {
     "/administrar",
     "/api/webhooks/clerk",
     "/api/webhooks/stripe",
+    "/api/webhooks/stripe-connect",
     "/api/checkout/session",
   ])("no protege %s", (path) => {
     expect(check(path)).toBe(false);

@@ -22,7 +22,7 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-const { startConnectOnboarding, syncOnboardingStatus, getPayoutAccount } = await import("./connect.service");
+const { startConnectOnboarding, syncOnboardingStatus, getPayoutAccount, handleConnectEvent } = await import("./connect.service");
 
 const ORIGIN = "http://localhost:3000";
 
@@ -55,7 +55,7 @@ describe("startConnectOnboarding", () => {
       account: "acct_new",
       type: "account_onboarding",
       return_url: `${ORIGIN}/organizer/payments?connect=return`,
-      refresh_url: `${ORIGIN}/organizer/payments?connect=refresh`,
+      refresh_url: `${ORIGIN}/organizer/payments/refresh`,
     });
   });
 
@@ -99,5 +99,27 @@ describe("getPayoutAccount", () => {
   ])("devuelve null en %j", async (rows) => {
     limit.mockResolvedValueOnce(rows);
     expect(await getPayoutAccount("u1")).toBeNull();
+  });
+});
+
+describe("handleConnectEvent", () => {
+  const ev = (type: string) => ({ type, data: { object: { id: "acct_1" } } }) as never;
+
+  it.each([
+    [{ details_submitted: true, capabilities: { transfers: "active" } }, "complete"],
+    [{ details_submitted: true, capabilities: { transfers: "pending" } }, "pending"],
+    [{ details_submitted: false, capabilities: { transfers: "active" } }, "pending"],
+  ])("account.updated persiste el estado recuperado de Stripe (%j)", async (account, expected) => {
+    accountsRetrieve.mockResolvedValue(account);
+    await handleConnectEvent(ev("account.updated"));
+    expect(accountsRetrieve).toHaveBeenCalledWith("acct_1");
+    expect(set).toHaveBeenCalledWith({ stripeOnboardingStatus: expected });
+    expect(where).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignora otros tipos sin llamar a Stripe ni a la DB", async () => {
+    await handleConnectEvent(ev("payout.paid"));
+    expect(accountsRetrieve).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
   });
 });

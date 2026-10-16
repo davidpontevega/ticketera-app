@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("server-only", () => ({}));
+
 const requireRole = vi.fn();
 vi.mock("@/modules/user", () => ({
   ORGANIZER_AREA_ROLES: ["super_admin", "admin", "organizer"],
