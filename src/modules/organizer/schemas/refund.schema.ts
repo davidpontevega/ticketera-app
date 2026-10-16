@@ -6,3 +6,7 @@ export const refundOrderSchema = z.object({
 });
 
 export type RefundOrderInput = z.infer<typeof refundOrderSchema>;
+
+export const retryEventRefundsSchema = z.object({
+  eventId: z.uuid("Evento invalido"),
+});

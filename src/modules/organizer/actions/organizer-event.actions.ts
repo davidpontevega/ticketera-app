@@ -5,7 +5,11 @@ import { z } from "zod";
 
 import { ORGANIZER_AREA_ROLES, requireRole } from "@/modules/user";
 
-import { ORGANIZER_PATH } from "../constants/organizer.constants";
+import {
+  getOrganizerCheckInPath,
+  getOrganizerOrdersPath,
+  ORGANIZER_PATH,
+} from "../constants/organizer.constants";
 import {
   changeEventStatusSchema,
   deleteEventSchema,
@@ -16,6 +20,7 @@ import {
   createEvent,
   updateEvent,
 } from "../services/organizer-event-write.service";
+import { cancelEventWithRefunds } from "../services/organizer-event-cancel.service";
 import type { SaveEventActionState, SaveEventError, SaveEventInput } from "../types/event-write.types";
 import {
   changeEventStatus,
@@ -23,6 +28,7 @@ import {
   setEventFeatured,
 } from "../services/organizer-event-admin.service";
 import type { EventAdminActionState } from "../types/organizer.types";
+import type { EventRefundSummary } from "../types/refund.types";
 
 type FieldErrors = NonNullable<
   Extract<EventAdminActionState, { status: "error" }>["fieldErrors"]
@@ -74,6 +80,19 @@ export async function changeEventStatusAction(
     };
   }
 
+  if (parsed.data.status === "cancelled") {
+    // Cancelar siempre reembolsa: nunca se llama changeEventStatus solo.
+    const cancelled = await cancelEventWithRefunds(parsed.data, viewer);
+    if (!cancelled.ok) {
+      return { status: "error", message: STATUS_CHANGE_ERRORS[cancelled.error] };
+    }
+    const { eventId } = parsed.data;
+    revalidatePath(ORGANIZER_PATH);
+    revalidatePath(getOrganizerOrdersPath(eventId));
+    revalidatePath(getOrganizerCheckInPath(eventId));
+    return { status: "success", message: cancelMessage(cancelled.refunds) };
+  }
+
   const result = await changeEventStatus(parsed.data, viewer);
   if (!result.ok) {
     return { status: "error", message: STATUS_CHANGE_ERRORS[result.error] };
@@ -81,6 +100,15 @@ export async function changeEventStatusAction(
 
   revalidatePath(ORGANIZER_PATH);
   return { status: "success", message: STATUS_SUCCESS_MESSAGES[parsed.data.status] };
+}
+
+function cancelMessage(refunds: EventRefundSummary | null): string {
+  if (!refunds) {
+    return "Evento cancelado; no se pudieron procesar los reembolsos, reintenta desde Ordenes";
+  }
+  const { total, refunded, failed } = refunds;
+  const base = `Evento cancelado. Reembolsadas ${refunded} de ${total} ordenes.`;
+  return failed > 0 ? `${base} ${failed} fallaron: reintentalas desde Ordenes.` : base;
 }
 
 const FEATURED_ERRORS = {

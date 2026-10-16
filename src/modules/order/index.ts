@@ -4,6 +4,7 @@ export { OrderConfirmation } from "./components/order-confirmation";
 export type { OrderConfirmationProps } from "./components/order-confirmation";
 
 export { MyTickets } from "./components/my-tickets";
+export { RefundPolicy } from "./components/refund-policy";
 
 export {
   CHECKOUT_FORM_DEFAULT,

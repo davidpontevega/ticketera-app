@@ -6,6 +6,8 @@ export { CheckInPanel } from "./components/check-in-panel";
 export type { CheckInPanelProps } from "./components/check-in-panel";
 export { EventOrdersTable } from "./components/event-orders-table";
 export type { EventOrdersTableProps } from "./components/event-orders-table";
+export { RetryRefundsButton } from "./components/retry-refunds-button";
+export type { RetryRefundsButtonProps } from "./components/retry-refunds-button";
 
 export {
   ORGANIZER_PATH,

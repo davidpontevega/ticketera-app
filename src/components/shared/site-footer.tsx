@@ -3,18 +3,24 @@ import { AtSign, Globe, Ticket, X } from "lucide-react"
 
 import { Separator } from "@/components/ui/separator"
 
+const link = (label: string, href = "#") => ({ label, href })
+
 const FOOTER_COLUMNS = [
   {
     title: "Sobre nosotros",
-    links: ["Quienes somos", "Trabaja con nosotros"],
+    links: [link("Quienes somos"), link("Trabaja con nosotros")],
   },
   {
     title: "Ayuda",
-    links: ["Centro de ayuda", "Contacto", "Preguntas frecuentes"],
+    links: [link("Centro de ayuda"), link("Contacto"), link("Preguntas frecuentes")],
   },
   {
     title: "Legal",
-    links: ["Terminos y condiciones", "Politica de privacidad"],
+    links: [
+      link("Terminos y condiciones"),
+      link("Politica de privacidad"),
+      link("Politica de reembolsos", "/refund-policy"),
+    ],
   },
 ] as const
 
@@ -45,14 +51,14 @@ export function SiteFooter() {
                 {column.title}
               </h3>
               <ul className="mt-4 flex flex-col gap-2">
-                {column.links.map((link) => (
-                  <li key={link}>
-                    <a
-                      href="#"
+                {column.links.map(({ label, href }) => (
+                  <li key={label}>
+                    <Link
+                      href={href}
                       className="cursor-pointer text-sm text-background/70 hover:text-primary"
                     >
-                      {link}
-                    </a>
+                      {label}
+                    </Link>
                   </li>
                 ))}
               </ul>

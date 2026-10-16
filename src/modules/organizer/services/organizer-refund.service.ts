@@ -9,7 +9,12 @@ import { applyOrderRefund } from "@/modules/order/services/refund.service";
 import { tickets } from "@/modules/ticket/db/ticket.table";
 
 import type { RefundOrderInput } from "../schemas/refund.schema";
-import type { EventOrderRow, RefundResult } from "../types/refund.types";
+import type {
+  EventOrderRow,
+  EventOrdersHeader,
+  EventRefundSummary,
+  RefundResult,
+} from "../types/refund.types";
 import { getEventScope, type EventAdminViewer } from "./organizer-event-admin.service";
 
 const ALREADY_REFUNDED_CODE = "charge_already_refunded";
@@ -49,25 +54,43 @@ export async function refundOrder(
     .limit(1);
   if (used) return { result: "has-used-tickets" };
 
+  return refundPaidOrder(
+    input.orderId,
+    viewer.id,
+    order.platformFeeAmount,
+    order.paymentIntentId,
+    order.sessionId,
+  );
+}
+
+// Nucleo compartido (boton por orden y cancelacion masiva): Stripe primero, DB despues.
+// No valida estado ni scope: el llamador ya lo hizo.
+async function refundPaidOrder(
+  orderId: string,
+  refundedBy: string,
+  platformFeeAmount: string | null,
+  paymentIntentId: string | null,
+  sessionId: string | null,
+): Promise<RefundResult> {
   let stripeRefundId: string | null = null;
   try {
-    let paymentIntentId = order.paymentIntentId;
-    if (!paymentIntentId && order.sessionId) {
-      const session = await stripe.checkout.sessions.retrieve(order.sessionId);
-      const pi = session.payment_intent;
-      paymentIntentId = typeof pi === "string" ? pi : (pi?.id ?? null);
+    let pi = paymentIntentId;
+    if (!pi && sessionId) {
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      const sessionPi = session.payment_intent;
+      pi = typeof sessionPi === "string" ? sessionPi : (sessionPi?.id ?? null);
     }
-    if (!paymentIntentId) return { result: "not-refundable" };
+    if (!pi) return { result: "not-refundable" };
 
     // Reembolso total: sin `amount`. La clave determinista evita duplicados en reintentos (24 h).
     // Destination charge (fee no nulo, spec 042): recupera la transferencia del organizador y la comision.
-    const isConnect = order.platformFeeAmount !== null;
+    const isConnect = platformFeeAmount !== null;
     const refund = await stripe.refunds.create(
       {
-        payment_intent: paymentIntentId,
+        payment_intent: pi,
         ...(isConnect && { reverse_transfer: true, refund_application_fee: true }),
       },
-      { idempotencyKey: `refund-order-${input.orderId}` },
+      { idempotencyKey: `refund-order-${orderId}` },
     );
     stripeRefundId = refund.id;
   } catch (error) {
@@ -81,7 +104,7 @@ export async function refundOrder(
 
   // false = ya aplicada (p. ej. por el webhook): tambien es exito.
   try {
-    await applyOrderRefund({ orderId: input.orderId, refundedBy: viewer.id, stripeRefundId });
+    await applyOrderRefund({ orderId, refundedBy, stripeRefundId });
   } catch {
     // El dinero ya salio en Stripe: el webhook charge.refunded o reintentar el boton reparan la DB.
     return {
@@ -90,6 +113,54 @@ export async function refundOrder(
     };
   }
   return { result: "refunded" };
+}
+
+// Reembolsa en serie las ordenes `paid` del evento. Un fallo no corta las demas.
+// Idempotente: sirve como reintento. ponytail: serie sin cola; techo = cientos de ordenes por request.
+export async function refundEventOrders(
+  eventId: string,
+  viewer: EventAdminViewer,
+): Promise<EventRefundSummary> {
+  const paid = await db
+    .select({
+      id: orders.id,
+      paymentIntentId: orders.stripePaymentIntentId,
+      sessionId: orders.stripeCheckoutSessionId,
+      platformFeeAmount: orders.platformFeeAmount,
+    })
+    .from(orders)
+    .innerJoin(events, eq(events.slug, orders.eventSlug))
+    .where(and(eq(events.id, eventId), eq(orders.status, "paid"), getEventScope(viewer)));
+
+  let refunded = 0;
+  for (const order of paid) {
+    const outcome = await refundPaidOrder(
+      order.id,
+      viewer.id,
+      order.platformFeeAmount,
+      order.paymentIntentId,
+      order.sessionId,
+    );
+    if (outcome.result === "refunded") {
+      refunded++;
+    } else {
+      console.error(`[refund] orden ${order.id} no reembolsada: ${outcome.result}`);
+    }
+  }
+  return { total: paid.length, refunded, failed: paid.length - refunded };
+}
+
+// Incluye eventos cancelados (getEventForEdit los excluye).
+export async function getEventHeaderForOrders(
+  eventId: string,
+  viewer: EventAdminViewer,
+): Promise<EventOrdersHeader | null> {
+  const [row] = await db
+    .select({ title: events.title, status: events.status })
+    .from(events)
+    .where(and(eq(events.id, eventId), getEventScope(viewer)))
+    .limit(1);
+  return row ?? null;
 }
 
 // ponytail: sin paginacion; techo = cientos de ordenes por evento.

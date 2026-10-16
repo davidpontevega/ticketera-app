@@ -17,6 +17,11 @@ vi.mock("../services/organizer-event-admin.service", () => ({
   setEventFeatured: (...args: unknown[]) => setEventFeatured(...args),
 }));
 
+const cancelEventWithRefunds = vi.fn();
+vi.mock("../services/organizer-event-cancel.service", () => ({
+  cancelEventWithRefunds: (...args: unknown[]) => cancelEventWithRefunds(...args),
+}));
+
 const createEvent = vi.fn();
 const updateEvent = vi.fn();
 vi.mock("../services/organizer-event-write.service", () => ({
@@ -54,6 +59,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   requireRole.mockResolvedValue(VIEWER);
   changeEventStatus.mockResolvedValue({ ok: true });
+  cancelEventWithRefunds.mockResolvedValue({ ok: true, refunds: { total: 0, refunded: 0, failed: 0 } });
   deleteEvent.mockResolvedValue({ ok: true });
   setEventFeatured.mockResolvedValue({ ok: true });
   createEvent.mockResolvedValue({ ok: true, eventId: VALID_EVENT_ID });
@@ -277,16 +283,69 @@ describe("changeEventStatusAction", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/organizer");
   });
 
-  it("exito con status cancelled revalida y devuelve 'Evento cancelado'", async () => {
-    changeEventStatus.mockResolvedValue({ ok: true });
+  it("cancelled delega en cancelEventWithRefunds (nunca changeEventStatus), arma el mensaje y revalida (AC7)", async () => {
+    cancelEventWithRefunds.mockResolvedValue({ ok: true, refunds: { total: 3, refunded: 3, failed: 0 } });
 
     const result = await changeEventStatusAction(
       { status: "idle" },
       formData({ eventId: VALID_EVENT_ID, status: "cancelled" }),
     );
 
-    expect(result).toEqual({ status: "success", message: "Evento cancelado" });
+    expect(result).toEqual({
+      status: "success",
+      message: "Evento cancelado. Reembolsadas 3 de 3 ordenes.",
+    });
+    expect(cancelEventWithRefunds).toHaveBeenCalledWith({ eventId: VALID_EVENT_ID, status: "cancelled" }, VIEWER);
+    expect(changeEventStatus).not.toHaveBeenCalled();
     expect(revalidatePath).toHaveBeenCalledWith("/organizer");
+    expect(revalidatePath).toHaveBeenCalledWith(`/organizer/events/${VALID_EVENT_ID}/orders`);
+    expect(revalidatePath).toHaveBeenCalledWith(`/organizer/events/${VALID_EVENT_ID}/check-in`);
+  });
+
+  it("cancelled con fallos menciona cuantas fallaron y el reintento (AC7)", async () => {
+    cancelEventWithRefunds.mockResolvedValue({ ok: true, refunds: { total: 3, refunded: 2, failed: 1 } });
+
+    const result = await changeEventStatusAction(
+      { status: "idle" },
+      formData({ eventId: VALID_EVENT_ID, status: "cancelled" }),
+    );
+
+    expect(result).toEqual({
+      status: "success",
+      message: "Evento cancelado. Reembolsadas 2 de 3 ordenes. 1 fallaron: reintentalas desde Ordenes.",
+    });
+  });
+
+  it("cancelled con refunds null avisa que debe reintentar desde Ordenes", async () => {
+    cancelEventWithRefunds.mockResolvedValue({ ok: true, refunds: null });
+
+    const result = await changeEventStatusAction(
+      { status: "idle" },
+      formData({ eventId: VALID_EVENT_ID, status: "cancelled" }),
+    );
+
+    expect(result).toEqual({
+      status: "success",
+      message: "Evento cancelado; no se pudieron procesar los reembolsos, reintenta desde Ordenes",
+    });
+  });
+
+  it("cancelled con error del servicio devuelve el mensaje sin revalidar", async () => {
+    cancelEventWithRefunds.mockResolvedValue({ ok: false, error: "invalid-transition" });
+
+    const result = await changeEventStatusAction(
+      { status: "idle" },
+      formData({ eventId: VALID_EVENT_ID, status: "cancelled" }),
+    );
+
+    expect(result).toEqual({ status: "error", message: "Este evento no admite ese cambio de estado" });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("otros estados no usan cancelEventWithRefunds", async () => {
+    await changeEventStatusAction({ status: "idle" }, formData({ eventId: VALID_EVENT_ID, status: "published" }));
+
+    expect(cancelEventWithRefunds).not.toHaveBeenCalled();
   });
 });
 

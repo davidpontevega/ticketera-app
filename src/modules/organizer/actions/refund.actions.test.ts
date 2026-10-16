@@ -11,12 +11,17 @@ vi.mock("../services/organizer-refund.service", () => ({
   refundOrder: (...args: unknown[]) => refundOrder(...args),
 }));
 
+const retryEventRefunds = vi.fn();
+vi.mock("../services/organizer-event-cancel.service", () => ({
+  retryEventRefunds: (...args: unknown[]) => retryEventRefunds(...args),
+}));
+
 const revalidatePath = vi.fn();
 vi.mock("next/cache", () => ({
   revalidatePath: (...args: unknown[]) => revalidatePath(...args),
 }));
 
-const { refundOrderAction } = await import("./refund.actions");
+const { refundOrderAction, retryEventRefundsAction } = await import("./refund.actions");
 
 const EVENT_ID = "11111111-1111-4111-8111-111111111111";
 const ORDER_ID = "22222222-2222-4222-8222-222222222222";
@@ -72,6 +77,42 @@ describe("refundOrderAction", () => {
       status: "stripe-error",
       message: "boom",
     });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe("retryEventRefundsAction", () => {
+  const retry = (entries: Record<string, string>) => retryEventRefundsAction({ status: "idle" }, form(entries));
+  const refunds = { total: 2, refunded: 2, failed: 0 };
+
+  beforeEach(() => {
+    retryEventRefunds.mockResolvedValue({ ok: true, refunds });
+  });
+
+  it("requireRole con ORGANIZER_AREA_ROLES; si rechaza no toca el servicio", async () => {
+    requireRole.mockRejectedValue(new Error("NEXT_REDIRECT"));
+    await expect(retry({ eventId: EVENT_ID })).rejects.toThrow();
+    expect(requireRole).toHaveBeenCalledWith(["super_admin", "admin", "organizer"]);
+    expect(retryEventRefunds).not.toHaveBeenCalled();
+  });
+
+  it("eventId invalido => error sin servicio ni revalidar", async () => {
+    expect(await retry({ eventId: "xx" })).toEqual({ status: "error", message: "Evento invalido" });
+    expect(retryEventRefunds).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("usa el viewer de la sesion (ignora el form), devuelve el resumen y revalida", async () => {
+    const result = await retry({ eventId: EVENT_ID, role: "admin" });
+    expect(result).toEqual({ status: "done", refunds });
+    expect(retryEventRefunds).toHaveBeenCalledWith({ eventId: EVENT_ID }, VIEWER);
+    expect(revalidatePath).toHaveBeenCalledWith(`/organizer/events/${EVENT_ID}/orders`);
+    expect(revalidatePath).toHaveBeenCalledWith("/organizer");
+  });
+
+  it("not-found => error sin revalidar", async () => {
+    retryEventRefunds.mockResolvedValue({ ok: false, error: "not-found" });
+    expect(await retry({ eventId: EVENT_ID })).toMatchObject({ status: "error" });
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

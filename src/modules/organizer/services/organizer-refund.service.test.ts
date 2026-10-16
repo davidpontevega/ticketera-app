@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 
-import { listEventOrders, refundOrder } from "./organizer-refund.service";
+import {
+  getEventHeaderForOrders,
+  listEventOrders,
+  refundEventOrders,
+  refundOrder,
+} from "./organizer-refund.service";
 
 vi.mock("server-only", () => ({}));
 
@@ -229,5 +234,74 @@ describe("listEventOrders", () => {
     const adm = toQuery(where.mock.calls[1][0] as SQL);
     expect(org.params).toEqual(["event-1", "paid", "refunded", "organizer-1"]);
     expect(adm.params).toEqual(["event-1", "paid", "refunded"]);
+  });
+});
+
+describe("refundEventOrders", () => {
+  const rows = [
+    { id: "o1", paymentIntentId: "pi_1", sessionId: null, platformFeeAmount: null },
+    { id: "o2", paymentIntentId: "pi_2", sessionId: null, platformFeeAmount: "5.00" },
+    { id: "o3", paymentIntentId: "pi_3", sessionId: null, platformFeeAmount: null },
+  ];
+
+  it("reembolsa cada orden paid una vez, sin amount, con clave y flags Connect segun fee (AC1)", async () => {
+    where.mockResolvedValueOnce(rows);
+
+    expect(await refundEventOrders("event-1", organizer)).toEqual({ total: 3, refunded: 3, failed: 0 });
+    expect(refundsCreate).toHaveBeenCalledTimes(3);
+    expect(refundsCreate).toHaveBeenNthCalledWith(1, { payment_intent: "pi_1" }, { idempotencyKey: "refund-order-o1" });
+    expect(refundsCreate).toHaveBeenNthCalledWith(
+      2,
+      { payment_intent: "pi_2", reverse_transfer: true, refund_application_fee: true },
+      { idempotencyKey: "refund-order-o2" },
+    );
+    expect(applyOrderRefund).toHaveBeenCalledWith({ orderId: "o1", refundedBy: "organizer-1", stripeRefundId: "re_1" });
+  });
+
+  it("un fallo no corta las demas; charge_already_refunded cuenta como reembolsada (AC3)", async () => {
+    where.mockResolvedValueOnce(rows);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    refundsCreate
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockRejectedValueOnce(Object.assign(new Error("already"), { code: "charge_already_refunded" }))
+      .mockResolvedValueOnce({ id: "re_3" });
+
+    expect(await refundEventOrders("event-1", admin)).toEqual({ total: 3, refunded: 2, failed: 1 });
+    expect(applyOrderRefund).toHaveBeenCalledTimes(2);
+  });
+
+  it("no consulta tickets: las entradas used no bloquean (AC4)", async () => {
+    where.mockResolvedValueOnce([rows[0]]);
+
+    expect(await refundEventOrders("event-1", admin)).toEqual({ total: 1, refunded: 1, failed: 0 });
+    expect(select).toHaveBeenCalledTimes(1);
+  });
+
+  it("filtra solo paid y aplica scope solo al organizer (AC5)", async () => {
+    where.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    expect(await refundEventOrders("event-1", organizer)).toEqual({ total: 0, refunded: 0, failed: 0 });
+    await refundEventOrders("event-1", admin);
+
+    expect(toQuery(where.mock.calls[0][0] as SQL).params).toEqual(["event-1", "paid", "organizer-1"]);
+    expect(toQuery(where.mock.calls[1][0] as SQL).params).toEqual(["event-1", "paid"]);
+    expect(refundsCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("getEventHeaderForOrders", () => {
+  it("devuelve titulo y estado, incluido cancelled, y null si no existe", async () => {
+    limit.mockResolvedValueOnce([{ title: "Show", status: "cancelled" }]).mockResolvedValueOnce([]);
+
+    expect(await getEventHeaderForOrders("event-1", admin)).toEqual({ title: "Show", status: "cancelled" });
+    expect(await getEventHeaderForOrders("event-2", admin)).toBeNull();
+  });
+
+  it("aplica scope solo al organizer", async () => {
+    await getEventHeaderForOrders("event-1", organizer);
+    await getEventHeaderForOrders("event-1", admin);
+
+    expect(toQuery(where.mock.calls[0][0] as SQL).params).toEqual(["event-1", "organizer-1"]);
+    expect(toQuery(where.mock.calls[1][0] as SQL).params).toEqual(["event-1"]);
   });
 });

@@ -1,3 +1,5 @@
+import type { EventStatusChangeError } from "./organizer.types";
+
 export type RefundFailure = "not-found" | "not-refundable" | "has-used-tickets";
 
 export type RefundResult =
@@ -22,3 +24,28 @@ export type RefundActionState =
   | { status: "refunded" }
   | { status: RefundFailure }
   | { status: "stripe-error"; message: string };
+
+export interface EventRefundSummary {
+  total: number;
+  refunded: number;
+  failed: number;
+}
+
+export interface EventOrdersHeader {
+  title: string;
+  status: "draft" | "published" | "cancelled";
+}
+
+// refunds: null = el evento quedo cancelado pero el reembolso masivo no pudo ejecutarse (reintentar).
+export type CancelEventResult =
+  | { ok: true; refunds: EventRefundSummary | null }
+  | { ok: false; error: "not-found" | EventStatusChangeError };
+
+export type RetryEventRefundsResult =
+  | { ok: true; refunds: EventRefundSummary }
+  | { ok: false; error: "not-found" };
+
+export type RetryRefundsActionState =
+  | { status: "idle" }
+  | { status: "error"; message: string }
+  | { status: "done"; refunds: EventRefundSummary };

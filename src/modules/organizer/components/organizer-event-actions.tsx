@@ -50,7 +50,7 @@ const STATUS_CHANGE_CONTENT: Record<
   cancel: {
     title: "Cancelar evento",
     description:
-      "¿Cancelar este evento? No se puede revertir; luego solo podra eliminarse.",
+      "¿Cancelar este evento? Se reembolsara automaticamente a todos los compradores y sus entradas quedaran anuladas. No se puede revertir.",
     confirmLabel: "Cancelar evento",
     targetStatus: "cancelled",
   },
@@ -159,12 +159,33 @@ function ConfirmDialogBody({
 }: ConfirmDialogBodyProps) {
   const [state, formAction, pending] = useActionState(action, { status: "idle" as const });
 
+  // Cancelar devuelve un resumen de reembolsos: se muestra en vez de cerrar.
+  const isCancelSummary = state.status === "success" && hiddenFields.status === "cancelled";
+
   useEffect(() => {
-    if (state.status === "success") {
+    if (state.status === "success" && !isCancelSummary) {
       onClose();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
+
+  if (state.status === "success" && isCancelSummary) {
+    return (
+      <>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <p role="status" className="text-sm">
+          {state.message}
+        </p>
+        <DialogFooter>
+          <Button type="button" onClick={onClose}>
+            Cerrar
+          </Button>
+        </DialogFooter>
+      </>
+    );
+  }
 
   return (
     <>
