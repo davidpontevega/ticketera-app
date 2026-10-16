@@ -104,7 +104,7 @@ export function EventDetailHero({ event, ticketsHref }: EventDetailHeroProps) {
                 Comprar entradas · desde {formatEventPrice(event.priceFrom)}
               </Button>
             )}
-            <EventDetailActions title={event.title} />
+            <EventDetailActions eventId={event.id} title={event.title} />
           </div>
         </div>
       </div>

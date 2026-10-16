@@ -1,5 +1,8 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("@/modules/favorite/actions/favorite.actions", () => ({ setFavoriteAction: vi.fn() }));
 
 import { EVENTS_MOCK } from "../mocks/event.mock";
 import { formatEventDateBadge, getEventCategoryOption, getEventHref } from "../utils/event.utils";
@@ -21,7 +24,9 @@ describe("EventCard", () => {
     render(<EventCard event={availableEvent} />);
 
     expect(screen.getByText("Disponible")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Agregar a favoritos" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: `Agregar a favoritos: ${availableEvent.title}` }),
+    ).toBeTruthy();
   });
 
   it("renders the category label and the date badge day", () => {

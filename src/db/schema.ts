@@ -5,3 +5,5 @@ export * from "@/modules/event/db/ticket-tier.table";
 export * from "@/modules/order/db/order.table";
 export * from "@/modules/order/db/order-item.table";
 export * from "@/modules/ticket/db/ticket.table";
+export * from "@/modules/favorite/db/favorite.table";
+export * from "@/modules/newsletter/db/newsletter-subscriber.table";

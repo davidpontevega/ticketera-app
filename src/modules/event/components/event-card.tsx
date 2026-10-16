@@ -1,11 +1,11 @@
 "use client";
 
-import { Heart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { FavoriteButton } from "@/modules/favorite";
 
 import type { EventEntity } from "../types/event.types";
 import { EventAvailabilityBadge } from "./event-availability-badge";
@@ -63,14 +63,7 @@ export function EventCard({ event, className }: EventCardProps) {
         </p>
         <div className="flex items-center justify-between">
           <p className="text-cta font-semibold">Desde {formatEventPrice(event.priceFrom)}</p>
-          <button
-            type="button"
-            aria-label="Agregar a favoritos"
-            onClick={(e) => e.preventDefault()}
-            className="pointer-events-auto cursor-pointer text-muted-foreground hover:text-destructive"
-          >
-            <Heart className="size-5" />
-          </button>
+          <FavoriteButton eventId={event.id} title={event.title} />
         </div>
       </CardContent>
     </Card>

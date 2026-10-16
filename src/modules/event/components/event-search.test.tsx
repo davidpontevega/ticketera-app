@@ -8,9 +8,10 @@ const replace = vi.fn();
 let currentSearch = "";
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace }),
+  useRouter: () => ({ replace, push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(currentSearch),
 }));
+vi.mock("@/modules/favorite/actions/favorite.actions", () => ({ setFavoriteAction: vi.fn() }));
 
 beforeEach(() => {
   replace.mockClear();

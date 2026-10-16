@@ -3,6 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EventDetailActions } from "./event-detail-actions";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("@/modules/favorite/actions/favorite.actions", () => ({ setFavoriteAction: vi.fn() }));
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -13,21 +16,16 @@ function stubNavigator(value: Partial<Navigator>) {
 }
 
 describe("EventDetailActions", () => {
-  it("toggles aria-pressed on the save button", () => {
-    render(<EventDetailActions title="Bad Bunny" />);
-    const save = screen.getByRole("button", { name: "Guardar evento" });
+  it("renders the favorite button", () => {
+    render(<EventDetailActions eventId="e1" title="Bad Bunny" />);
 
-    expect(save.getAttribute("aria-pressed")).toBe("false");
-    fireEvent.click(save);
-    expect(save.getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(save);
-    expect(save.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByRole("button", { name: "Agregar a favoritos: Bad Bunny" })).toBeTruthy();
   });
 
   it("uses the native share sheet when available", async () => {
     const share = vi.fn().mockResolvedValue(undefined);
     stubNavigator({ share });
-    render(<EventDetailActions title="Bad Bunny" />);
+    render(<EventDetailActions eventId="e1" title="Bad Bunny" />);
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Compartir evento" }));
@@ -40,7 +38,7 @@ describe("EventDetailActions", () => {
   it("copies the link when native share is not available", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     stubNavigator({ share: undefined, clipboard: { writeText } as unknown as Clipboard });
-    render(<EventDetailActions title="Bad Bunny" />);
+    render(<EventDetailActions eventId="e1" title="Bad Bunny" />);
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Compartir evento" }));

@@ -10,7 +10,7 @@ import {
 } from "@/modules/event";
 import { listFeaturedEvents } from "@/modules/event/services/featured-event.service";
 import { listCatalogEvents } from "@/modules/catalog/services/catalog.service";
-import { NewsletterSignup } from "@/components/shared/newsletter-signup";
+import { NewsletterSignup } from "@/modules/newsletter";
 
 export default async function Home() {
   const [featuredEvents, catalog] = await Promise.all([listFeaturedEvents(), listCatalogEvents()]);

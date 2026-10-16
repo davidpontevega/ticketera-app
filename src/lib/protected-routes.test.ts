@@ -8,6 +8,8 @@ const check = (path: string) => isProtectedRoute(new NextRequest("http://localho
 describe("isProtectedRoute", () => {
   it.each([
     "/my-tickets",
+    "/favorites",
+    "/favorites/x",
     "/events/rock-fest/checkout",
     "/events/rock-fest/confirmation",
     "/organizer",

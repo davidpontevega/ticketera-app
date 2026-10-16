@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown, LogOut, Ticket } from "lucide-react";
+import { ChevronDown, Heart, LogOut, Ticket } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,7 @@ import type { AuthUser } from "../types/auth.types";
 import { getAuthHref, getInitials } from "../utils/auth.utils";
 
 export const MY_TICKETS_PATH = "/my-tickets";
+export const MY_FAVORITES_PATH = "/favorites";
 
 export interface UserMenuProps {
   layout?: "inline" | "sheet"; // "sheet": links apilados para el menu lateral mobile
@@ -82,6 +83,13 @@ export function UserMenu({ layout = "inline" }: UserMenuProps) {
           <Ticket className="size-4" aria-hidden />
           Mis entradas
         </Link>
+        <Link
+          href={MY_FAVORITES_PATH}
+          className="flex items-center gap-2 text-sm font-medium hover:text-primary"
+        >
+          <Heart className="size-4" aria-hidden />
+          Mis favoritos
+        </Link>
         <button
           type="button"
           onClick={() => void signOut()}
@@ -119,6 +127,13 @@ export function UserMenu({ layout = "inline" }: UserMenuProps) {
         >
           <Ticket aria-hidden />
           Mis entradas
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          render={<Link href={MY_FAVORITES_PATH} />}
+          className="cursor-pointer px-2 py-1.5"
+        >
+          <Heart aria-hidden />
+          Mis favoritos
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => void signOut()} className="cursor-pointer px-2 py-1.5">
           <LogOut aria-hidden />
