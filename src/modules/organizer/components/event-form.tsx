@@ -12,6 +12,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea";
 import { focusFormField } from "@/lib/focus-form-field";
 import { EVENT_CATEGORIES, type EventCategory } from "@/modules/event";
+import type { VenueOption } from "@/modules/venue/types/venue.types";
 
 import { createEventAction, updateEventAction } from "../actions/organizer-event.actions";
 import { ORGANIZER_PATH } from "../constants/organizer.constants";
@@ -19,6 +20,7 @@ import {
   createEmptyTier,
   createEventFormValues,
   validateEventForm,
+  type ZoneLimits,
 } from "../schemas/event-form.schema";
 import type {
   EventFormErrors,
@@ -31,7 +33,7 @@ import { EventCoverField } from "./event-cover-field";
 import { EventPreview } from "./event-preview";
 import { EventTierFields } from "./event-tier-fields";
 
-type EventFormField = Exclude<keyof EventFormValues, "tiers">;
+type EventFormField = Exclude<keyof EventFormValues, "tiers" | "venueId">;
 
 const getFieldId = (key: string) => `event-${key.replaceAll(".", "-")}`;
 
@@ -43,11 +45,13 @@ function getFieldOrder(values: EventFormValues): string[] {
     "description",
     "date",
     "time",
+    "venueId",
     "venue",
     "city",
     "imageUrl",
     ...values.tiers.flatMap((_, index) => [
       `tiers.${index}.name`,
+      `tiers.${index}.zoneId`,
       `tiers.${index}.price`,
       `tiers.${index}.quantity`,
     ]),
@@ -61,11 +65,18 @@ export interface EventFormProps {
   eventId?: string; // presente = modo edicion
   status?: OrganizerDbEventStatus;
   initialValues?: EventFormValues;
-  tiersLocked?: boolean; // el evento tiene ventas: tiers de solo lectura
+  tiersLocked?: boolean; // el evento tiene ventas: tiers y recinto de solo lectura
+  venueOptions?: VenueOption[]; // recintos que el viewer puede usar; vacio = sin selector
 }
 
 // Se renderiza dentro de OrganizerShell. El dueno lo fija el servidor.
-export function EventForm({ eventId, status, initialValues, tiersLocked = false }: EventFormProps) {
+export function EventForm({
+  eventId,
+  status,
+  initialValues,
+  tiersLocked = false,
+  venueOptions = [],
+}: EventFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const isPublished = status === "published";
@@ -78,8 +89,12 @@ export function EventForm({ eventId, status, initialValues, tiersLocked = false 
   const [lastMode, setLastMode] = useState<EventFormMode | null>(null);
 
   // Un published ya realizado se edita sin exigir fecha futura (el servidor valida si la fecha cambia).
+  const selectedVenue = venueOptions.find((venue) => venue.id === values.venueId);
+  const zoneLimits: ZoneLimits = Object.fromEntries(
+    (selectedVenue?.zones ?? []).map((zone) => [zone.id, zone]),
+  );
   const validate = (next: EventFormValues, mode: EventFormMode) =>
-    validateEventForm(next, mode, eventId && isPublished ? new Date(0) : new Date());
+    validateEventForm(next, mode, eventId && isPublished ? new Date(0) : new Date(), zoneLimits);
 
   const update = (next: EventFormValues) => {
     setValues(next);
@@ -87,10 +102,23 @@ export function EventForm({ eventId, status, initialValues, tiersLocked = false 
     if (lastMode) setErrors(validate(next, lastMode));
   };
   const setField = (field: EventFormField, value: string) => update({ ...values, [field]: value });
+  // Cambiar de recinto invalida las zonas elegidas.
+  const setVenue = (venueId: string) =>
+    update({
+      ...values,
+      venueId,
+      tiers: values.tiers.map((tier) => ({ ...tier, zoneId: "" })),
+    });
   const setTier = (index: number, field: keyof Omit<EventFormTier, "id">, value: string) =>
     update({
       ...values,
-      tiers: values.tiers.map((tier, i) => (i === index ? { ...tier, [field]: value } : tier)),
+      tiers: values.tiers.map((tier, i) => {
+        if (i !== index) return tier;
+        const next = { ...tier, [field]: value };
+        // Zona numerada: la cantidad es el numero de asientos (el servidor la recalcula).
+        const zone = field === "zoneId" ? zoneLimits[value] : undefined;
+        return zone?.kind === "numbered" ? { ...next, quantity: String(zone.capacity) } : next;
+      }),
     });
 
   const save = (mode: EventFormMode) => {
@@ -217,8 +245,34 @@ export function EventForm({ eventId, status, initialValues, tiersLocked = false 
             <div className="grid gap-5 sm:grid-cols-2">
               {textField("date", "Fecha", { type: "date" })}
               {textField("time", "Hora de inicio", { type: "time" })}
-              {textField("venue", "Lugar", { placeholder: "Ej. Estadio Nacional" })}
-              {textField("city", "Ciudad", { placeholder: "Ej. Lima" })}
+              {venueOptions.length > 0 && (
+                <Field className="sm:col-span-2">
+                  <FieldLabel
+                    htmlFor={getFieldId("venueId")}
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Recinto
+                  </FieldLabel>
+                  <NativeSelect
+                    id={getFieldId("venueId")}
+                    value={values.venueId}
+                    disabled={tiersLocked}
+                    onChange={(event) => setVenue(event.target.value)}
+                    className="w-full [&>select]:h-11 [&>select]:rounded-xl [&>select]:text-[15px]"
+                  >
+                    <NativeSelectOption value="">
+                      Sin recinto (admision general libre)
+                    </NativeSelectOption>
+                    {venueOptions.map((venue) => (
+                      <NativeSelectOption key={venue.id} value={venue.id}>
+                        {venue.name} - {venue.city}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                </Field>
+              )}
+              {!selectedVenue && textField("venue", "Lugar", { placeholder: "Ej. Estadio Nacional" })}
+              {!selectedVenue && textField("city", "Ciudad", { placeholder: "Ej. Lima" })}
             </div>
           </section>
 
@@ -250,6 +304,7 @@ export function EventForm({ eventId, status, initialValues, tiersLocked = false 
             )}
             <EventTierFields
               locked={tiersLocked}
+              zones={selectedVenue?.zones}
               tiers={values.tiers}
               errors={errors}
               getFieldId={getFieldId}
@@ -291,7 +346,13 @@ export function EventForm({ eventId, status, initialValues, tiersLocked = false 
         </div>
 
         <div className="lg:sticky lg:top-10">
-          <EventPreview values={values} />
+          <EventPreview
+            values={
+              selectedVenue
+                ? { ...values, venue: selectedVenue.name, city: selectedVenue.city }
+                : values
+            }
+          />
         </div>
       </form>
     </div>

@@ -5,7 +5,12 @@ import type Stripe from "stripe";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 // Ruta directa: el barrel de event no expone el servicio con `db`.
+import { events } from "@/modules/event/db/event.table";
 import { getPublishedEvent } from "@/modules/event/services/event.service";
+import { isConnectEnabled } from "@/modules/payment/constants/payment.constants";
+import { getPayoutAccount } from "@/modules/payment/services/connect.service";
+import { getPlatformFeePercent } from "@/modules/payment/services/platform-settings.service";
+import { calculatePlatformFee } from "@/modules/payment/utils/payment.utils";
 import { getTicketLines, getTicketTotals, getZoneCapacity, tickets } from "@/modules/ticket";
 import type { EventAvailabilitySnapshot, TicketLine, VenueLayout } from "@/modules/ticket";
 import { users } from "@/modules/user/db/user.table";
@@ -17,10 +22,12 @@ import type { CreateCheckoutSessionInput } from "../schemas/checkout.schema";
 import {
   getOrderStatusFromEvent,
   getOrderStatusFromSession,
+  getRefundedPaymentIntentId,
   toStripeLineItems,
 } from "../utils/stripe-checkout.utils";
 import { toTicketRows } from "../utils/order.utils";
 import { getTakenInventory } from "./availability.service";
+import { applyOrderRefund } from "./refund.service";
 
 export type CreateCheckoutSessionResult =
   | { ok: true; url: string; orderId: string }
@@ -72,6 +79,24 @@ async function findUserIdByClerkId(clerkId: string): Promise<string | null> {
   return user?.id ?? null;
 }
 
+const PAYOUT_BLOCKED_MESSAGE = "El organizador aun no habilita los pagos de este evento";
+
+interface ConnectCharge {
+  accountId: string;
+  feeCents: number;
+  netCents: number;
+  feePercent: number;
+}
+
+// Solo con Connect encendido. null = el organizador no puede cobrar (sin organizador o sin cuenta complete).
+async function resolveConnectCharge(eventSlug: string, totalAmount: number): Promise<ConnectCharge | null> {
+  const [row] = await db.select({ organizerId: events.organizerId }).from(events).where(eq(events.slug, eventSlug));
+  const account = row?.organizerId ? await getPayoutAccount(row.organizerId) : null;
+  if (!account) return null;
+  const feePercent = await getPlatformFeePercent();
+  return { accountId: account.accountId, feePercent, ...calculatePlatformFee(totalAmount, feePercent) };
+}
+
 export async function createCheckoutSession(
   input: CreateCheckoutSessionInput,
   context: CheckoutContext,
@@ -90,6 +115,13 @@ export async function createCheckoutSession(
   const totals = getTicketTotals(lines);
   if (totals.quantity === 0) {
     return { ok: false, status: 400, message: "Selecciona al menos una entrada" };
+  }
+
+  // Antes de reservar inventario: sin destino no se cobra a la plataforma por cuenta de un tercero.
+  let connect: ConnectCharge | null = null;
+  if (isConnectEnabled()) {
+    connect = await resolveConnectCharge(input.eventSlug, totals.amount);
+    if (!connect) return { ok: false, status: 409, message: PAYOUT_BLOCKED_MESSAGE };
   }
 
   const userId = context.clerkUserId ? await findUserIdByClerkId(context.clerkUserId) : null;
@@ -126,6 +158,11 @@ export async function createCheckoutSession(
           lines,
           status: "pending",
           totalAmount: totals.amount.toFixed(2),
+          ...(connect && {
+            platformFeeAmount: (connect.feeCents / 100).toFixed(2),
+            organizerNetAmount: (connect.netCents / 100).toFixed(2),
+            platformFeePercent: connect.feePercent.toFixed(2),
+          }),
         })
         .returning();
       return {
@@ -156,7 +193,14 @@ export async function createCheckoutSession(
       mode: "payment",
       line_items: toStripeLineItems(event.title, lines),
       customer_email: input.buyer.email,
-      payment_intent_data: { receipt_email: input.buyer.email, metadata: { orderId: order.id } },
+      payment_intent_data: {
+        receipt_email: input.buyer.email,
+        metadata: { orderId: order.id },
+        ...(connect && {
+          transfer_data: { destination: connect.accountId },
+          ...(connect.feeCents > 0 && { application_fee_amount: connect.feeCents }),
+        }),
+      },
       client_reference_id: order.id,
       metadata: { orderId: order.id },
       success_url: `${context.origin}/events/${input.eventSlug}/confirmation?session_id={CHECKOUT_SESSION_ID}`,
@@ -228,6 +272,16 @@ export async function syncOrderWithSession(sessionId: string): Promise<OrderReco
 }
 
 export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object as Stripe.Charge;
+    const paymentIntentId = getRefundedPaymentIntentId(event);
+    if (!paymentIntentId) {
+      console.warn("Ignoring charge.refunded (partial refund or no payment_intent):", charge.id);
+      return;
+    }
+    await applyOrderRefund({ paymentIntentId, refundedBy: null, stripeRefundId: charge.refunds?.data[0]?.id ?? null });
+    return;
+  }
   const status = getOrderStatusFromEvent(event);
   if (!status) return;
   const session = event.data.object as Stripe.Checkout.Session;

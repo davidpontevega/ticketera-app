@@ -10,6 +10,7 @@ export interface EventFormTier {
   name: string;
   price: string;
   quantity: string;
+  zoneId: string; // "" = sin zona (evento sin recinto)
 }
 
 export interface EventFormValues {
@@ -21,6 +22,7 @@ export interface EventFormValues {
   venue: string;
   city: string;
   imageUrl: string;
+  venueId: string; // "" = sin recinto
   tiers: EventFormTier[];
 }
 

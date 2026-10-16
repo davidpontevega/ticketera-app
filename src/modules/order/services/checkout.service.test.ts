@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EVENTS_MOCK, getEventBySlug } from "@/modules/event";
 import { getTicketLines, getTicketTotals, getVenueLayout } from "@/modules/ticket";
 import type { VenueLayout } from "@/modules/ticket";
+import { buildVenueLayoutFromVenueZones } from "@/modules/ticket/utils/tier-layout.utils";
 import { orders } from "../db/order.table";
 import type { CreateCheckoutSessionInput } from "../schemas/checkout.schema";
 import { toStripeLineItems } from "../utils/stripe-checkout.utils";
@@ -46,6 +47,15 @@ vi.mock("@/lib/db", () => {
   };
   return { db: { ...client, transaction: (cb: (tx: typeof client) => unknown) => cb(client) } };
 });
+
+const getPayoutAccount = vi.fn();
+const getPlatformFeePercent = vi.fn();
+vi.mock("@/modules/payment/services/connect.service", () => ({
+  getPayoutAccount: (...args: unknown[]) => getPayoutAccount(...args),
+}));
+vi.mock("@/modules/payment/services/platform-settings.service", () => ({
+  getPlatformFeePercent: () => getPlatformFeePercent(),
+}));
 
 const sessionsCreate = vi.fn();
 const sessionsRetrieve = vi.fn();
@@ -223,6 +233,75 @@ describe("createCheckoutSession", () => {
   });
 });
 
+describe("createCheckoutSession con Stripe Connect", () => {
+  const ctx = { origin: "https://app.test", clerkUserId: null };
+  const input = () => buildInput({ quantities: { general: 2 } });
+
+  beforeEach(() => {
+    vi.stubEnv("STRIPE_CONNECT_ENABLED", "true");
+    getPlatformFeePercent.mockResolvedValue(10);
+    sessionsCreate.mockResolvedValue({ id: "cs_c", url: "https://x" });
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("flag apagado: sin transfer_data, sin fee y sin consultar Connect", async () => {
+    vi.stubEnv("STRIPE_CONNECT_ENABLED", "");
+    await createCheckoutSession(input(), ctx);
+
+    const args = sessionsCreate.mock.calls[0][0];
+    expect(args.payment_intent_data).not.toHaveProperty("transfer_data");
+    expect(args.payment_intent_data).not.toHaveProperty("application_fee_amount");
+    expect(insertValues.mock.calls[0][0]).not.toHaveProperty("platformFeeAmount");
+    expect(getPayoutAccount).not.toHaveBeenCalled();
+  });
+
+  it("organizador con cuenta complete: destination + fee, y guarda fee/neto/porcentaje", async () => {
+    selectWhere.mockResolvedValueOnce([{ organizerId: "org-1" }]);
+    getPayoutAccount.mockResolvedValue({ accountId: "acct_1" });
+
+    const result = await createCheckoutSession(input(), ctx);
+
+    const total = getTicketTotals(
+      getTicketLines(getVenueLayout(getEventBySlug(EVENTS_MOCK, EVENT_SLUG)!), { general: 2 }, {}),
+    ).amount;
+    const feeCents = Math.round(total * 10);
+    expect(result).toMatchObject({ ok: true });
+    expect(getPayoutAccount).toHaveBeenCalledWith("org-1");
+    expect(sessionsCreate.mock.calls[0][0].payment_intent_data).toEqual({
+      receipt_email: buyer.email,
+      metadata: { orderId: "order-1" },
+      transfer_data: { destination: "acct_1" },
+      application_fee_amount: feeCents,
+    });
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        totalAmount: total.toFixed(2),
+        platformFeeAmount: (feeCents / 100).toFixed(2),
+        organizerNetAmount: (total - feeCents / 100).toFixed(2),
+        platformFeePercent: "10.00",
+      }),
+    );
+  });
+
+  it.each([
+    ["organizador sin cuenta complete", [{ organizerId: "org-1" }], null],
+    ["evento sin organizador", [{ organizerId: null }], null],
+  ])("409 sin reservar ni llamar a Stripe: %s", async (_name, rows, account) => {
+    selectWhere.mockResolvedValueOnce(rows);
+    getPayoutAccount.mockResolvedValue(account);
+
+    const result = await createCheckoutSession(input(), ctx);
+
+    expect(result).toEqual({
+      ok: false,
+      status: 409,
+      message: "El organizador aun no habilita los pagos de este evento",
+    });
+    expect(insert).not.toHaveBeenCalled();
+    expect(sessionsCreate).not.toHaveBeenCalled();
+  });
+});
+
 describe("createCheckoutSession anti-sobreventa", () => {
   const ctx = { origin: "https://app.test", clerkUserId: null };
   const seatLayout = () => getVenueLayout(getEventBySlug(EVENTS_MOCK, EVENT_SLUG)!);
@@ -304,6 +383,89 @@ describe("createCheckoutSession anti-sobreventa", () => {
 
     expect(updateSet).toHaveBeenLastCalledWith(expect.objectContaining({ status: "cancelled" }));
     expect(updateWhere).toHaveBeenLastCalledWith(eq(orders.id, "order-1"));
+  });
+
+  describe("con layout de recinto", () => {
+    beforeEach(() => {
+      layoutOverride = () =>
+        buildVenueLayoutFromVenueZones("Recinto", [
+          {
+            tier: { id: "t-num", name: "Numerada", price: 50, totalStock: 2 },
+            kind: "numbered",
+            seats: [
+              { rowLabel: "A", seatNumber: 1 },
+              { rowLabel: "A", seatNumber: 2 },
+            ],
+          },
+          { tier: { id: "t-gen", name: "General", price: 20, totalStock: 10 }, kind: "general", seats: [] },
+        ]);
+      sessionsCreate.mockResolvedValue({ id: "cs_v", url: "https://x" });
+    });
+    const previous = (line: object) => [{ eventSlug: EVENT_SLUG, lines: [line] }];
+
+    it("409 si el asiento ya esta tomado", async () => {
+      selectWhere.mockResolvedValueOnce(
+        previous({ zoneId: "t-num", quantity: 1, seatLabels: ["A1"] }),
+      );
+
+      const result = await createCheckoutSession(buildInput({ seatIds: { "t-num": ["t-num-A-1"] } }), ctx);
+
+      expect(result).toMatchObject({ ok: false, status: 409 });
+      expect(insert).not.toHaveBeenCalled();
+      expect(sessionsCreate).not.toHaveBeenCalled();
+    });
+
+    it("409 si se excede la capacidad de la zona general", async () => {
+      selectWhere.mockResolvedValueOnce(previous({ zoneId: "t-gen", quantity: 9, seatLabels: [] }));
+
+      const result = await createCheckoutSession(buildInput({ quantities: { "t-gen": 2 } }), ctx);
+
+      expect(result).toMatchObject({ ok: false, status: 409 });
+      expect(insert).not.toHaveBeenCalled();
+      expect(sessionsCreate).not.toHaveBeenCalled();
+    });
+
+    it("control: 8 previas + 2 pedidas caben y crea la orden", async () => {
+      selectWhere.mockResolvedValueOnce(previous({ zoneId: "t-gen", quantity: 8, seatLabels: [] }));
+
+      const result = await createCheckoutSession(buildInput({ quantities: { "t-gen": 2 } }), ctx);
+
+      expect(result).toMatchObject({ ok: true });
+      expect(insert).toHaveBeenCalled();
+    });
+  });
+});
+
+describe("handleStripeEvent charge.refunded", () => {
+  const refundEvent = (object: object) => ({ type: "charge.refunded", data: { object } }) as never;
+
+  it("applies a full refund by payment intent with refundedBy null", async () => {
+    updateReturning.mockResolvedValueOnce([{ id: "order-1" }]);
+
+    await handleStripeEvent(
+      refundEvent({ id: "ch_1", refunded: true, payment_intent: "pi_1", refunds: { data: [{ id: "re_1" }] } }),
+    );
+
+    expect(updateSet).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ status: "refunded", refundedBy: null, stripeRefundId: "re_1" }),
+    );
+    expect(updateSet).toHaveBeenNthCalledWith(2, { status: "cancelled" });
+  });
+
+  it("ignores partial refunds and charges without payment_intent", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await handleStripeEvent(refundEvent({ id: "ch_2", refunded: false, payment_intent: "pi_1" }));
+    await handleStripeEvent(refundEvent({ id: "ch_3", refunded: true, payment_intent: null }));
+    warn.mockRestore();
+
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("does not touch tickets when no paid order matches", async () => {
+    await handleStripeEvent(refundEvent({ id: "ch_4", refunded: true, payment_intent: "pi_x" }));
+
+    expect(update).toHaveBeenCalledTimes(1);
   });
 });
 

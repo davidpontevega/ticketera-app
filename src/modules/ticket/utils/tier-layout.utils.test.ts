@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { EVENTS_MOCK } from "@/modules/event/mocks/event.mock";
 
 import { getVenueLayout, getZoneCapacity } from "./ticket.utils";
-import { buildVenueLayoutFromTiers } from "./tier-layout.utils";
+import { buildVenueLayoutFromTiers, buildVenueLayoutFromVenueZones } from "./tier-layout.utils";
 
 const event = EVENTS_MOCK[0];
 
@@ -63,5 +63,53 @@ describe("buildVenueLayoutFromTiers", () => {
   it("falls back when a tier is not in the template", () => {
     const tiers = [...seededTiers(), { id: "x", name: "Extra", price: 1, totalStock: 5 }];
     expect(buildVenueLayoutFromTiers(event, tiers).id).toBe("general-admission");
+  });
+});
+
+describe("buildVenueLayoutFromVenueZones", () => {
+  const grid = (rows: number, perRow: number) =>
+    Array.from({ length: rows * perRow }, (_, i) => ({
+      rowLabel: "ABCDEFGHIJ"[Math.floor(i / perRow)],
+      seatNumber: (i % perRow) + 1,
+    }));
+  const zones = [
+    { tier: { id: "t1", name: "Platea", price: 100, totalStock: 20 }, kind: "numbered" as const, seats: grid(2, 10) },
+    { tier: { id: "t2", name: "General", price: 40, totalStock: 300 }, kind: "general" as const, seats: [] },
+  ];
+
+  it("uses tier ids as zone ids and builds seats from venue seats", () => {
+    const layout = buildVenueLayoutFromVenueZones("Teatro", zones);
+    const [numbered, general] = layout.zones;
+    expect(layout.zones.map((z) => z.id)).toEqual(["t1", "t2"]);
+    expect(numbered).toMatchObject({ seating: "numbered", capacity: 20 });
+    expect(numbered.seats).toHaveLength(20);
+    expect(numbered.seats[0]).toMatchObject({ id: "t1-A-1", row: "A", number: 1, status: "available" });
+    expect(general).toMatchObject({ seating: "general", capacity: 300, remaining: 300, seats: [] });
+  });
+
+  it("keeps seats inside the zone rectangle without overlapping", () => {
+    const [numbered] = buildVenueLayoutFromVenueZones("Teatro", zones).zones;
+    const { x, y, width, height } = numbered.shape as { x: number; y: number; width: number; height: number };
+    for (const seat of numbered.seats) {
+      expect(seat.x).toBeGreaterThan(x);
+      expect(seat.x).toBeLessThan(x + width);
+      expect(seat.y).toBeGreaterThan(y);
+      expect(seat.y).toBeLessThan(y + height);
+    }
+    expect(new Set(numbered.seats.map((s) => `${s.x},${s.y}`)).size).toBe(20);
+  });
+
+  it("only draws seats that exist and stacks zones", () => {
+    const sparse = [{ ...zones[0], seats: grid(2, 10).filter((s) => s.seatNumber !== 3) }, zones[1]];
+    const layout = buildVenueLayoutFromVenueZones("Teatro", sparse);
+    expect(layout.zones[0].seats).toHaveLength(18);
+    expect(layout.zones[0].capacity).toBe(18);
+    const first = layout.zones[0].shape as { y: number; height: number };
+    expect((layout.zones[1].shape as { y: number }).y).toBeGreaterThan(first.y + first.height);
+    expect(layout.viewBox.height).toBeGreaterThan((layout.zones[1].shape as { y: number }).y);
+  });
+
+  it("is deterministic", () => {
+    expect(buildVenueLayoutFromVenueZones("T", zones)).toEqual(buildVenueLayoutFromVenueZones("T", zones));
   });
 });

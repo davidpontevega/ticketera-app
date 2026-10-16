@@ -6,6 +6,7 @@ import type { TicketLine } from "@/modules/ticket";
 import {
   getOrderStatusFromEvent,
   getOrderStatusFromSession,
+  getRefundedPaymentIntentId,
   toStripeLineItems,
 } from "./stripe-checkout.utils";
 
@@ -114,5 +115,21 @@ describe("getOrderStatusFromEvent", () => {
 
   it("returns null for unhandled event types", () => {
     expect(getOrderStatusFromEvent(buildEvent("payment_intent.created"))).toBeNull();
+  });
+});
+
+describe("getRefundedPaymentIntentId", () => {
+  const charge = (object: object, type = "charge.refunded") =>
+    ({ type, data: { object } }) as unknown as Stripe.Event;
+
+  it("returns the payment intent id for a full refund (string or object)", () => {
+    expect(getRefundedPaymentIntentId(charge({ refunded: true, payment_intent: "pi_1" }))).toBe("pi_1");
+    expect(getRefundedPaymentIntentId(charge({ refunded: true, payment_intent: { id: "pi_2" } }))).toBe("pi_2");
+  });
+
+  it("returns null for partial refunds, missing payment_intent or other event types", () => {
+    expect(getRefundedPaymentIntentId(charge({ refunded: false, payment_intent: "pi_1" }))).toBeNull();
+    expect(getRefundedPaymentIntentId(charge({ refunded: true, payment_intent: null }))).toBeNull();
+    expect(getRefundedPaymentIntentId(charge({ refunded: true, payment_intent: "pi_1" }, "charge.succeeded"))).toBeNull();
   });
 });

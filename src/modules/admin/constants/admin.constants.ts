@@ -1,7 +1,8 @@
 import type { LucideIcon } from "lucide-react";
-import { Users } from "lucide-react";
+import { Percent, Users } from "lucide-react";
 
 import { ORGANIZER_NAV } from "@/modules/organizer";
+import { ADMIN_SETTINGS_PATH } from "@/modules/payment/constants/payment.constants";
 import {
   ADMIN_USERS_PATH,
   ORGANIZER_AREA_ROLES,
@@ -26,6 +27,9 @@ export const ADMIN_NAV_SECTIONS: readonly AdminNavSection[] = [
   {
     label: "Administracion",
     roles: USER_ADMIN_ROLES,
-    items: [{ href: ADMIN_USERS_PATH, label: "Usuarios", icon: Users }],
+    items: [
+      { href: ADMIN_USERS_PATH, label: "Usuarios", icon: Users },
+      { href: ADMIN_SETTINGS_PATH, label: "Comision", icon: Percent },
+    ],
   },
 ];

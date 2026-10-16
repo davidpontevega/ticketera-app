@@ -2,6 +2,7 @@ import { index, integer, pgEnum, pgTable, text, timestamp, unique, uuid } from "
 
 import { orderItems } from "@/modules/order/db/order-item.table";
 import { orders } from "@/modules/order/db/order.table";
+import { users } from "@/modules/user/db/user.table";
 
 export const ticketStatusEnum = pgEnum("ticket_status", ["valid", "used", "cancelled"]);
 
@@ -19,6 +20,7 @@ export const tickets = pgTable("tickets", {
   status: ticketStatusEnum("status").notNull().default("valid"),
   attendeeName: text("attendee_name"),
   checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
+  checkedInBy: uuid("checked_in_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("tickets_order_item_id_idx").on(table.orderItemId),

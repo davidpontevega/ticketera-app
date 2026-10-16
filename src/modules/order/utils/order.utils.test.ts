@@ -109,6 +109,12 @@ const RECORD: OrderRecord = {
   totalAmount: "450.00",
   stripePaymentIntentId: null,
   stripeCheckoutSessionId: "cs_test_1",
+  refundedAt: null,
+  refundedBy: null,
+  stripeRefundId: null,
+  platformFeeAmount: null,
+  organizerNetAmount: null,
+  platformFeePercent: null,
   createdAt: new Date("2026-10-01T10:00:00Z"),
   updatedAt: new Date("2026-10-01T10:00:00Z"),
 };

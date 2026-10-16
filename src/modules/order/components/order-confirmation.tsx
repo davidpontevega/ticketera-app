@@ -72,7 +72,12 @@ export function OrderConfirmation({ event, order: record }: OrderConfirmationPro
     return <div aria-busy className="mx-auto h-96 max-w-4xl animate-pulse rounded-3xl bg-card" />;
   }
 
-  if (status === "pending" || status === "failed" || status === "cancelled") {
+  if (
+    status === "pending" ||
+    status === "failed" ||
+    status === "cancelled" ||
+    status === "refunded"
+  ) {
     return (
       <OrderPaymentStatus status={status} checkoutHref={`${getEventHref(event.slug)}/checkout`} />
     );

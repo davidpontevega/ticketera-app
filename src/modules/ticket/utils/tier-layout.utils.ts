@@ -23,6 +23,7 @@ const ZONE_HEIGHT = 90;
 const ZONE_GAP = 20;
 const ZONES_TOP = 110;
 const SHORT_NAME_MAX_LENGTH = 24;
+const ROW_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 // Del tipo mas caro al mas barato (mas oscuro = mas caro, como en las plantillas del mock).
 const TONES_BY_PRICE = [
   ZONE_TONES.premium,
@@ -36,10 +37,24 @@ function truncate(value: string, maxLength: number): string {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
 }
 
-function buildGeneralLayout(tiers: readonly TierInput[]): VenueLayout {
+// Tono por precio: del tipo mas caro al mas barato.
+function getToneByPrice(tiers: readonly TierInput[]) {
   const priceRank = [...tiers]
     .sort((a, b) => b.price - a.price)
     .map((tier) => tier.id);
+  return (tierId: string) =>
+    TONES_BY_PRICE[
+      Math.min(priceRank.indexOf(tierId), TONES_BY_PRICE.length - 1)
+    ];
+}
+
+const GENERAL_STAGE: VenueLayout["stage"] = {
+  label: "Ingreso",
+  shape: { kind: "rect", x: 380, y: 30, width: 240, height: 50, radius: 12 },
+};
+
+function buildGeneralLayout(tiers: readonly TierInput[]): VenueLayout {
+  const toneOf = getToneByPrice(tiers);
   const zones: VenueZone[] = tiers.map((tier, index) => ({
     id: tier.id,
     name: tier.name,
@@ -47,9 +62,7 @@ function buildGeneralLayout(tiers: readonly TierInput[]): VenueLayout {
     price: tier.price,
     availability: getAvailabilityByRatio(tier.totalStock, tier.totalStock),
     seating: "general",
-    ...TONES_BY_PRICE[
-      Math.min(priceRank.indexOf(tier.id), TONES_BY_PRICE.length - 1)
-    ],
+    ...toneOf(tier.id),
     shape: {
       kind: "rect",
       x: ZONE_X,
@@ -68,18 +81,81 @@ function buildGeneralLayout(tiers: readonly TierInput[]): VenueLayout {
       width: VIEWBOX_WIDTH,
       height: ZONES_TOP + tiers.length * (ZONE_HEIGHT + ZONE_GAP) + ZONE_GAP,
     },
-    stage: {
-      label: "Ingreso",
-      shape: {
-        kind: "rect",
-        x: 380,
-        y: 30,
-        width: 240,
-        height: 50,
-        radius: 12,
-      },
-    },
+    stage: GENERAL_STAGE,
     zones,
+  };
+}
+
+export interface VenueZoneLayoutInput {
+  tier: TierInput;
+  kind: "general" | "numbered";
+  seats: readonly { rowLabel: string; seatNumber: number }[];
+}
+
+const NUMBERED_ROW_HEIGHT = 28;
+const NUMBERED_PADDING = 40;
+
+// Layout de un evento con recinto: zonas apiladas (orden del arreglo). zone.id = tier.id para que
+// el checkout/inventario (033) no cambie; los asientos salen de venue_seats.
+export function buildVenueLayoutFromVenueZones(
+  _venueName: string,
+  zones: readonly VenueZoneLayoutInput[],
+): VenueLayout {
+  const toneOf = getToneByPrice(zones.map(({ tier }) => tier));
+  let y = ZONES_TOP;
+  const layoutZones = zones.map(({ tier, kind, seats: venueSeats }): VenueZone => {
+    const isNumbered = kind === "numbered";
+    const rows = isNumbered
+      ? Math.max(0, ...venueSeats.map((s) => ROW_LETTERS.indexOf(s.rowLabel) + 1))
+      : 0;
+    const seatsPerRow = Math.max(0, ...venueSeats.map((s) => s.seatNumber));
+    const height = isNumbered
+      ? Math.max(ZONE_HEIGHT, rows * NUMBERED_ROW_HEIGHT + NUMBERED_PADDING)
+      : ZONE_HEIGHT;
+    const shape = {
+      kind: "rect" as const,
+      x: ZONE_X,
+      y,
+      width: ZONE_WIDTH,
+      height,
+      radius: 18,
+    };
+    y += height + ZONE_GAP;
+    const base = {
+      id: tier.id,
+      name: tier.name,
+      shortName: truncate(tier.name, SHORT_NAME_MAX_LENGTH),
+      price: tier.price,
+      ...toneOf(tier.id),
+      shape,
+    };
+    if (!isNumbered) {
+      return {
+        ...base,
+        availability: getAvailabilityByRatio(tier.totalStock, tier.totalStock),
+        seating: "general",
+        seats: [],
+        remaining: tier.totalStock,
+        capacity: tier.totalStock,
+      };
+    }
+    const existing = new Set(venueSeats.map((s) => `${s.rowLabel}-${s.seatNumber}`));
+    const seats = buildSeats(tier.id, shape, rows, seatsPerRow, 0).filter((seat) =>
+      existing.has(`${seat.row}-${seat.number}`),
+    );
+    return {
+      ...base,
+      availability: getAvailabilityByRatio(seats.length, seats.length),
+      seating: "numbered",
+      seats,
+      capacity: seats.length,
+    };
+  });
+  return {
+    id: "general-admission",
+    viewBox: { width: VIEWBOX_WIDTH, height: y + ZONE_GAP },
+    stage: GENERAL_STAGE,
+    zones: layoutZones,
   };
 }
 

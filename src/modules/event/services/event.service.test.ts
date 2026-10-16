@@ -81,6 +81,48 @@ describe("listPublishedEvents", () => {
   });
 });
 
+describe("venue layout selection", () => {
+  const venueEvent = { ...eventRow, venueId: "v1" };
+  const zoneRow = (id: string, kind: string, sortOrder: number) => ({
+    id,
+    kind,
+    sortOrder,
+    createdAt: new Date("2026-01-01"),
+  });
+
+  it("uses the venue builder when the event has a venue and all tiers have zones", async () => {
+    results.push(
+      [venueEvent],
+      [
+        { ...tierRow, id: "t1", venueZoneId: "z1" },
+        { ...tierRow, id: "t2", venueZoneId: "z2", name: "Platea" },
+      ],
+      [zoneRow("z1", "general", 1), zoneRow("z2", "numbered", 0)],
+      [
+        { venueZoneId: "z2", rowLabel: "A", seatNumber: 1 },
+        { venueZoneId: "z2", rowLabel: "A", seatNumber: 2 },
+      ],
+    );
+    const [{ layout }] = await listPublishedEvents();
+    expect(layout.zones.map((z) => z.id)).toEqual(["t2", "t1"]);
+    expect(layout.zones[0].seats.map((s) => s.id)).toEqual(["t2-A-1", "t2-A-2"]);
+    expect(layout.zones[1]).toMatchObject({ seating: "general", capacity: 100 });
+  });
+
+  it("falls back to tiers when a tier has no zone", async () => {
+    results.push([venueEvent], [{ ...tierRow, venueZoneId: null }]);
+    const [{ layout }] = await listPublishedEvents();
+    expect(layout.zones.map((z) => z.id)).toEqual(["t1"]);
+    expect(results).toHaveLength(0);
+  });
+
+  it("falls back when the event has no venue even if tiers carry a zone", async () => {
+    results.push([{ ...eventRow, venueId: null }], [{ ...tierRow, venueZoneId: "z1" }], []);
+    const [{ layout }] = await listPublishedEvents();
+    expect(layout.id).toBe("general-admission");
+  });
+});
+
 describe("getPublishedEvent", () => {
   it("incluye status published en el where", async () => {
     results.push([eventRow], [tierRow]);

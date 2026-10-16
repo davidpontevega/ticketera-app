@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CircleAlert, Clock, RefreshCw, TicketX } from "lucide-react";
+import { CircleAlert, Clock, RefreshCw, TicketX, Undo2 } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,11 @@ const COPY = {
     title: "Tu pago fue cancelado o expiro",
     description: "Tu compra no se completo. Puedes volver a intentarlo.",
   },
+  refunded: {
+    icon: Undo2,
+    title: "Esta compra fue reembolsada",
+    description: "El importe se devolvio a tu medio de pago original.",
+  },
 } as const;
 
 export function OrderPaymentStatus({ status, checkoutHref }: OrderPaymentStatusProps) {
@@ -50,11 +55,11 @@ export function OrderPaymentStatus({ status, checkoutHref }: OrderPaymentStatusP
         ) : (
           <Button
             size="lg"
-            render={<Link href={checkoutHref} />}
+            render={<Link href={status === "refunded" ? "/" : checkoutHref} />}
             nativeButton={false}
             className="h-11 px-5"
           >
-            Intentar de nuevo
+            {status === "refunded" ? "Ir al inicio" : "Intentar de nuevo"}
           </Button>
         )
       }

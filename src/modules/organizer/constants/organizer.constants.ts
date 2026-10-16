@@ -1,10 +1,15 @@
-import { CalendarDays, LayoutDashboard, type LucideIcon } from "lucide-react";
+import { CalendarDays, CreditCard, LayoutDashboard, MapPin, type LucideIcon } from "lucide-react";
+
+import { PAYMENTS_PATH } from "@/modules/payment/constants/payment.constants";
 
 import type { OrganizerEventFilter } from "../types/organizer.types";
 
 export const ORGANIZER_PATH = "/organizer";
 export const ORGANIZER_NEW_EVENT_PATH = "/organizer/events/new";
 export const getOrganizerEditEventPath = (id: string) => `/organizer/events/${id}/edit`;
+export const getOrganizerCheckInPath = (id: string) => `/organizer/events/${id}/check-in`;
+export const getOrganizerOrdersPath = (id: string) => `/organizer/events/${id}/orders`;
+export const ORGANIZER_VENUES_PATH = "/organizer/venues";
 export const ORGANIZER_EVENTS_ANCHOR = "my-events";
 
 export interface OrganizerNavItem {
@@ -20,6 +25,8 @@ export const ORGANIZER_NAV: readonly OrganizerNavItem[] = [
     label: "Mis eventos",
     icon: CalendarDays,
   },
+  { href: ORGANIZER_VENUES_PATH, label: "Recintos", icon: MapPin },
+  { href: PAYMENTS_PATH, label: "Pagos", icon: CreditCard },
 ];
 
 export const ORGANIZER_EVENT_FILTERS: readonly { value: OrganizerEventFilter; label: string }[] = [

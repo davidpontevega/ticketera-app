@@ -419,7 +419,8 @@ const VALID_VALUES: EventFormValues = {
   venue: "Estadio",
   city: "Lima",
   imageUrl: "data:image/png;base64,AAA",
-  tiers: [{ id: "t1", name: "General", price: "50", quantity: "100" }],
+  venueId: "",
+  tiers: [{ id: "t1", name: "General", price: "50", quantity: "100", zoneId: "" }],
 };
 const PUBLISH = { values: VALID_VALUES, intent: "publish" as const };
 
@@ -450,8 +451,8 @@ describe("createEventAction", () => {
     ["portada con formato invalido", { imageUrl: "javascript:alert(1)" }, "imageUrl"],
     ["portada https de otro host", { imageUrl: "https://evil.example.com/a.jpg" }, "imageUrl"],
     ["portada http", { imageUrl: "http://images.unsplash.com/a.jpg" }, "imageUrl"],
-    ["precio fuera de rango", { tiers: [{ id: "t1", name: "General", price: "100000000", quantity: "100" }] }, "tiers.0.price"],
-    ["cantidad fuera de rango", { tiers: [{ id: "t1", name: "General", price: "50", quantity: "2147483648" }] }, "tiers.0.quantity"],
+    ["precio fuera de rango", { tiers: [{ id: "t1", name: "General", price: "100000000", quantity: "100", zoneId: "" }] }, "tiers.0.price"],
+    ["cantidad fuera de rango", { tiers: [{ id: "t1", name: "General", price: "50", quantity: "2147483648", zoneId: "" }] }, "tiers.0.quantity"],
     ["portada demasiado pesada", { imageUrl: "data:image/png;base64," + "A".repeat(700_000) }, "imageUrl"],
   ])("publicar %s devuelve fieldErrors sin escribir", async (_label, patch, field) => {
     const result = await createEventAction({ values: { ...VALID_VALUES, ...patch }, intent: "publish" });

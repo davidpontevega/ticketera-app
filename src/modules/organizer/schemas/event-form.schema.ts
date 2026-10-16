@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { EVENT_CATEGORIES } from "@/modules/event";
+import type { VenueZoneKind } from "@/modules/venue/types/venue.types";
 
 import type {
   EventFormErrors,
@@ -55,6 +56,9 @@ const publishSchema = z.object({
   tiers: z.array(tierSchema).min(1, "Agrega al menos un tipo de entrada"),
 });
 
+// Con recinto, lugar y ciudad salen del recinto (el servidor los copia).
+const publishVenueSchema = publishSchema.extend({ venue: z.string(), city: z.string() });
+
 // events.starts_at es NOT NULL: el borrador tambien exige fecha y hora.
 const draftSchema = z.object({
   name: nameSchema,
@@ -65,7 +69,7 @@ const draftSchema = z.object({
 });
 
 export function createEmptyTier(): EventFormTier {
-  return { id: createId("tier"), name: "", price: "", quantity: "" };
+  return { id: createId("tier"), name: "", price: "", quantity: "", zoneId: "" };
 }
 
 export const EVENT_FORM_DEFAULT: EventFormValues = {
@@ -77,11 +81,35 @@ export const EVENT_FORM_DEFAULT: EventFormValues = {
   venue: "",
   city: "",
   imageUrl: "",
+  venueId: "",
   tiers: [],
 };
 
 export function createEventFormValues(): EventFormValues {
   return { ...EVENT_FORM_DEFAULT, tiers: [createEmptyTier(), createEmptyTier()] };
+}
+
+export type ZoneLimits = Readonly<Record<string, { kind: VenueZoneKind; capacity: number }>>;
+
+// Con recinto: cada tipo lleva una zona distinta (y, en zonas generales, no excede su capacidad).
+// El servidor lo vuelve a validar y fija el stock de zonas numeradas.
+function validateVenueTiers(values: EventFormValues, zones?: ZoneLimits): EventFormErrors {
+  const errors: EventFormErrors = {};
+  const used = new Set<string>();
+  values.tiers.forEach((tier, index) => {
+    if (!tier.name.trim() && !tier.price.trim() && !tier.quantity.trim()) return;
+    const key = `tiers.${index}.zoneId`;
+    if (!tier.zoneId) errors[key] = "Elige la zona del recinto";
+    else if (used.has(tier.zoneId)) errors[key] = "Esta zona ya tiene un tipo de entrada";
+    else {
+      used.add(tier.zoneId);
+      const zone = zones?.[tier.zoneId];
+      if (zone?.kind === "general" && Number(tier.quantity) > zone.capacity) {
+        errors[`tiers.${index}.quantity`] = `La zona admite hasta ${zone.capacity} entradas`;
+      }
+    }
+  });
+  return errors;
 }
 
 // Borrador: nombre, fecha y hora. Publicar: todo, con la fecha en el futuro. Errores por campo
@@ -90,9 +118,11 @@ export function validateEventForm(
   values: EventFormValues,
   mode: EventFormMode,
   now: Date = new Date(),
+  zones?: ZoneLimits,
 ): EventFormErrors {
-  const result = (mode === "draft" ? draftSchema : publishSchema).safeParse(values);
-  const errors: EventFormErrors = {};
+  const schema = mode === "draft" ? draftSchema : values.venueId ? publishVenueSchema : publishSchema;
+  const result = schema.safeParse(values);
+  const errors: EventFormErrors = values.venueId ? validateVenueTiers(values, zones) : {};
   if (!result.success) {
     for (const issue of result.error.issues) {
       errors[issue.path.join(".")] ??= issue.message;

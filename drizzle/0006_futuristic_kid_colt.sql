@@ -1,0 +1,2 @@
+ALTER TABLE "tickets" ADD COLUMN "checked_in_by" uuid;--> statement-breakpoint
+ALTER TABLE "tickets" ADD CONSTRAINT "tickets_checked_in_by_users_id_fk" FOREIGN KEY ("checked_in_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;

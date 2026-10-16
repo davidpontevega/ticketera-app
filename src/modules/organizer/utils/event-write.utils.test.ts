@@ -4,6 +4,7 @@ import type { EventFormValues } from "../types/organizer.types";
 import {
   hasTiersChanged,
   slugify,
+  type VenueSnapshot,
   toEventDbInput,
   toEventFormDateTime,
 } from "./event-write.utils";
@@ -18,9 +19,10 @@ const values: EventFormValues = {
   venue: " Costa Verde ",
   city: "Lima",
   imageUrl: "data:image/png;base64,AAAA",
+  venueId: "",
   tiers: [
-    { id: "t1", name: " General ", price: "120.5", quantity: "500" },
-    { id: "t2", name: "", price: "", quantity: "" },
+    { id: "t1", name: " General ", price: "120.5", quantity: "500", zoneId: "" },
+    { id: "t2", name: "", price: "", quantity: "", zoneId: "" },
   ],
 };
 
@@ -48,7 +50,10 @@ describe("toEventDbInput", () => {
       longitude: "-77.0427934",
     });
     expect(event.startsAt).toEqual(new Date("2027-01-21T02:30:00.000Z"));
-    expect(tiers).toEqual([{ name: "General", price: "120.50", totalStock: 500 }]);
+    expect(tiers).toEqual([
+      { name: "General", price: "120.50", totalStock: 500, venueZoneId: null },
+    ]);
+    expect(event.venueId).toBeNull();
   });
 
   it("uses 0/0 for a city without coordinates and accepts an override", () => {
@@ -81,8 +86,8 @@ describe("hasTiersChanged", () => {
     { id: "b", name: "VIP", price: "300.00", totalStock: 50 },
   ];
   const same = [
-    { id: "a", name: "General", price: "120", quantity: "500" },
-    { id: "b", name: "VIP", price: "300", quantity: "50" },
+    { id: "a", name: "General", price: "120", quantity: "500", zoneId: "" },
+    { id: "b", name: "VIP", price: "300", quantity: "50", zoneId: "" },
   ];
 
   it("is false for identical tiers", () => {
@@ -94,7 +99,65 @@ describe("hasTiersChanged", () => {
     expect(hasTiersChanged(current, [{ ...same[0], price: "121" }, same[1]])).toBe(true);
     expect(hasTiersChanged(current, [{ ...same[0], quantity: "501" }, same[1]])).toBe(true);
     expect(hasTiersChanged(current, [{ ...same[0], id: "z" }, same[1]])).toBe(true);
-    expect(hasTiersChanged(current, [...same, { id: "c", name: "X", price: "1", quantity: "1" }])).toBe(true);
+    expect(hasTiersChanged(current, [...same, { id: "c", name: "X", price: "1", quantity: "1", zoneId: "" }])).toBe(true);
     expect(hasTiersChanged(current, [same[0]])).toBe(true);
+  });
+});
+
+describe("toEventDbInput with a venue", () => {
+  const venue: VenueSnapshot = {
+    id: "v1",
+    name: "Teatro Central",
+    address: "Av. Principal 123",
+    city: "Cusco",
+    latitude: "-13.5",
+    longitude: "-71.9",
+  };
+  const withZones = {
+    ...values,
+    venueId: "v1",
+    tiers: [{ id: "t1", name: "Platea", price: "80", quantity: "10", zoneId: "z1" }],
+  };
+
+  it("copies the venue snapshot, its coordinates and the zone ids", () => {
+    const { event, tiers } = toEventDbInput(withZones, undefined, venue);
+    expect(event).toMatchObject({
+      venueId: "v1",
+      venueName: "Teatro Central",
+      address: "Av. Principal 123",
+      city: "Cusco",
+      latitude: "-13.5",
+      longitude: "-71.9",
+    });
+    expect(tiers[0]).toMatchObject({ venueZoneId: "z1" });
+  });
+
+  it("falls back to the city coordinates, then to 0/0", () => {
+    expect(
+      toEventDbInput(withZones, undefined, { ...venue, latitude: null, longitude: null, city: "Lima" }).event,
+    ).toMatchObject({ latitude: "-12.0463731", longitude: "-77.0427934" });
+    expect(
+      toEventDbInput(withZones, undefined, { ...venue, latitude: null, longitude: null, city: "Tarapoto" }).event,
+    ).toMatchObject({ latitude: "0", longitude: "0" });
+  });
+
+  it("ignores the zone ids when there is no venue", () => {
+    expect(toEventDbInput(withZones).tiers[0].venueZoneId).toBeNull();
+  });
+});
+
+describe("hasTiersChanged with venue and zones", () => {
+  const current = [{ id: "a", name: "Platea", price: "80.00", totalStock: 10, venueZoneId: "z1" }];
+  const next = [{ id: "a", name: "Platea", price: "80", quantity: "10", zoneId: "z1" }];
+
+  it("is false when venue and zone are the same", () => {
+    expect(hasTiersChanged(current, next, { current: "v1", next: "v1" })).toBe(false);
+  });
+
+  it("detects a venue or zone change", () => {
+    expect(hasTiersChanged(current, next, { current: "v1", next: "v2" })).toBe(true);
+    expect(hasTiersChanged(current, next, { current: "v1", next: "" })).toBe(true);
+    expect(hasTiersChanged(current, [{ ...next[0], zoneId: "z2" }], { current: "v1", next: "v1" })).toBe(true);
+    expect(hasTiersChanged(current, [{ ...next[0], zoneId: "" }], { current: "v1", next: "v1" })).toBe(true);
   });
 });

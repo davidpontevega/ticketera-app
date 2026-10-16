@@ -1,6 +1,7 @@
 import { boolean, index, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { users } from "@/modules/user/db/user.table";
+import { venues } from "@/modules/venue/db/venue.table";
 
 export const eventCategoryEnum = pgEnum("event_category", [
   "concerts",
@@ -37,4 +38,8 @@ export const events = pgTable("events", {
   status: eventStatusEnum("status").notNull().default("draft"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [index("events_organizer_id_idx").on(table.organizerId)]);
+  venueId: uuid("venue_id").references(() => venues.id, { onDelete: "restrict" }),
+}, (table) => [
+  index("events_organizer_id_idx").on(table.organizerId),
+  index("events_venue_id_idx").on(table.venueId),
+]);

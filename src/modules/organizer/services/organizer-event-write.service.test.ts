@@ -25,7 +25,15 @@ function selectChain() {
       return chain;
     },
     limit: result,
+    for: (mode: string) => {
+      calls.push({ op: "for", arg: mode });
+      return result();
+    },
     orderBy: result,
+    groupBy: () => {
+      calls.push({ op: "count" });
+      return result();
+    },
     then: (resolve: (v: unknown) => void, reject: (e: unknown) => void) => result().then(resolve, reject),
   };
   return chain;
@@ -88,7 +96,8 @@ const values: EventFormValues = {
   venue: "Estadio",
   city: "Lima",
   imageUrl: "data:image/png;base64,AAA",
-  tiers: [{ id: "tier-1", name: "General", price: "50", quantity: "100" }],
+  venueId: "",
+  tiers: [{ id: "tier-1", name: "General", price: "50", quantity: "100", zoneId: "" }],
 };
 const EXISTING_TIER = { id: "tier-1", name: "General", price: "50.00", totalStock: 100 };
 
@@ -143,7 +152,7 @@ describe("createEvent", () => {
 });
 
 describe("updateEvent", () => {
-  const draftRow = { slug: "festival", status: "draft", startsAt: new Date("2099-01-01T01:00:00Z") };
+  const draftRow = { slug: "festival", status: "draft", startsAt: new Date("2099-01-01T01:00:00Z"), venueId: null };
 
   it("evento ajeno, inexistente o cancelled devuelve not-found sin escribir", async () => {
     selectResults = [[]];
@@ -281,9 +290,10 @@ describe("getEventForEdit", () => {
           venueName: "Estadio",
           city: "Lima",
           imageUrl: "https://x/y.png",
+          venueId: "v1",
         },
       ],
-      [{ id: "t1", name: "General", price: "50.00", totalStock: 100 }],
+      [{ id: "t1", name: "General", price: "50.00", totalStock: 100, venueZoneId: "z1" }],
       [{ id: "o1" }],
     ];
 
@@ -299,8 +309,141 @@ describe("getEventForEdit", () => {
         venue: "Estadio",
         city: "Lima",
         imageUrl: "https://x/y.png",
-        tiers: [{ id: "t1", name: "General", price: "50", quantity: "100" }],
+        venueId: "v1",
+        tiers: [{ id: "t1", name: "General", price: "50", quantity: "100", zoneId: "z1" }],
       },
     });
+  });
+});
+
+describe("events with a venue", () => {
+  const V1 = "11111111-1111-4111-8111-111111111111";
+  const Z_NUMBERED = "22222222-2222-4222-8222-222222222222";
+  const Z_GENERAL = "33333333-3333-4333-8333-333333333333";
+  const VENUE_ROW = {
+    id: V1,
+    name: "Teatro Central",
+    address: "Av. Principal 123",
+    city: "Cusco",
+    latitude: "-13.5",
+    longitude: "-71.9",
+  };
+  const ZONES = [
+    { id: Z_NUMBERED, kind: "numbered", capacity: null },
+    { id: Z_GENERAL, kind: "general", capacity: 300 },
+  ];
+  const COUNTS = [{ zoneId: Z_NUMBERED, count: 200 }];
+  const venueValues = (tiers: EventFormValues["tiers"]): EventFormValues => ({
+    ...values,
+    venue: "",
+    city: "",
+    venueId: V1,
+    tiers,
+  });
+  const tier = (id: string, zoneId: string, quantity: string) => ({ id, name: id, price: "50", quantity, zoneId });
+  const valid = venueValues([tier("platea", Z_NUMBERED, "1"), tier("general", Z_GENERAL, "250")]);
+
+  it("copies the venue, links the zones and computes the numbered stock on the server", async () => {
+    selectResults = [[], [VENUE_ROW], ZONES, COUNTS];
+
+    expect(await createEvent({ values: valid, intent: "publish" }, VIEWER)).toEqual({ ok: true, eventId: "new-id" });
+
+    expect(insertedValues[0]).toMatchObject({
+      venueId: V1,
+      venueName: "Teatro Central",
+      address: "Av. Principal 123",
+      city: "Cusco",
+      latitude: "-13.5",
+      longitude: "-71.9",
+    });
+    expect(insertedValues[1]).toEqual([
+      expect.objectContaining({ venueZoneId: Z_NUMBERED, totalStock: 200 }),
+      expect.objectContaining({ venueZoneId: Z_GENERAL, totalStock: 250 }),
+    ]);
+  });
+
+  it("locks the zones with for share first and counts the seats afterwards, before inserting anything", async () => {
+    selectResults = [[], [VENUE_ROW], ZONES, COUNTS];
+    await createEvent({ values: valid, intent: "publish" }, VIEWER);
+    expect(calls.map((call) => call.op)).toEqual(["execute", "for", "count", "insert", "insert"]);
+    expect(calls[1].arg).toBe("share");
+  });
+
+  it("scopes the venue to the organizer but not to the admin", async () => {
+    selectResults = [[], []];
+    await createEvent({ values: valid, intent: "publish" }, VIEWER);
+    selectResults = [[], []];
+    await createEvent({ values: valid, intent: "publish" }, { id: "admin-1", role: "admin" });
+    const venueWheres = wheres.map((w) => dialect.sqlToQuery(w).params).filter((params) => params.includes(V1));
+    expect(venueWheres[0]).toContain("organizer-1");
+    expect(venueWheres[1]).not.toContain("admin-1");
+  });
+
+  it("answers not-found for a foreign or non-uuid venue without writing", async () => {
+    selectResults = [[], []];
+    expect(await createEvent({ values: valid, intent: "publish" }, VIEWER)).toEqual({ ok: false, error: "not-found" });
+    expect(insertedValues).toHaveLength(0);
+
+    expect(
+      await createEvent({ values: { ...valid, venueId: "not-a-uuid" }, intent: "publish" }, VIEWER),
+    ).toEqual({ ok: false, error: "not-found" });
+    expect(insertedValues).toHaveLength(0);
+  });
+
+  it.each([
+    ["a zone of another venue", [tier("a", "44444444-4444-4444-8444-444444444444", "1")]],
+    ["a tier without zone", [tier("a", "", "10")]],
+  ])("answers not-found for %s", async (_label, tiers) => {
+    selectResults = [[], [VENUE_ROW], ZONES, COUNTS];
+    expect(await createEvent({ values: venueValues(tiers), intent: "publish" }, VIEWER)).toEqual({
+      ok: false,
+      error: "not-found",
+    });
+    expect(insertedValues).toHaveLength(0);
+  });
+
+  it.each([
+    ["a repeated zone", [tier("a", Z_GENERAL, "10"), tier("b", Z_GENERAL, "10")], COUNTS],
+    ["a general zone over its capacity", [tier("a", Z_GENERAL, "301")], COUNTS],
+    ["a numbered zone without seats", [tier("a", Z_NUMBERED, "1")], []],
+  ])("rejects %s as unknown", async (_label, tiers, counts) => {
+    selectResults = [[], [VENUE_ROW], ZONES, counts];
+    expect(await createEvent({ values: venueValues(tiers), intent: "publish" }, VIEWER)).toEqual({
+      ok: false,
+      error: "unknown",
+    });
+    expect(insertedValues).toHaveLength(0);
+  });
+
+  it("updateEvent refuses to change venue or zones once there are orders", async () => {
+    const current = { id: "platea", name: "platea", price: "50.00", totalStock: 200, venueZoneId: Z_NUMBERED };
+    const row = { slug: "festival", status: "draft", startsAt: new Date("2099-01-01T01:00:00Z"), venueId: V1 };
+    const same = venueValues([tier("platea", Z_NUMBERED, "200")]);
+
+    selectResults = [[row], [{ id: "o1" }], [current]];
+    expect(await updateEvent("e1", { values: { ...same, venueId: "" }, intent: "draft" }, VIEWER)).toEqual({
+      ok: false,
+      error: "tiers-locked",
+    });
+
+    selectResults = [[row], [{ id: "o1" }], [current]];
+    expect(
+      await updateEvent("e1", { values: venueValues([tier("platea", Z_GENERAL, "200")]), intent: "draft" }, VIEWER),
+    ).toEqual({ ok: false, error: "tiers-locked" });
+
+    selectResults = [[row], [{ id: "o1" }], [current], [VENUE_ROW], ZONES, COUNTS];
+    expect(await updateEvent("e1", { values: same, intent: "draft" }, VIEWER)).toEqual({ ok: true });
+  });
+
+  it("updateEvent without orders replaces the tiers with the computed stock", async () => {
+    const row = { slug: "festival", status: "draft", startsAt: new Date("2099-01-01T01:00:00Z"), venueId: null };
+    selectResults = [[row], [], [VENUE_ROW], ZONES, COUNTS];
+
+    expect(await updateEvent("e1", { values: valid, intent: "draft" }, VIEWER)).toEqual({ ok: true });
+    expect(setValues).toMatchObject({ venueId: V1, venueName: "Teatro Central" });
+    expect(insertedValues[0]).toEqual([
+      expect.objectContaining({ totalStock: 200 }),
+      expect.objectContaining({ totalStock: 250 }),
+    ]);
   });
 });

@@ -14,7 +14,8 @@ const validValues: EventFormValues = {
   venue: "Costa Verde",
   city: "Lima",
   imageUrl: "data:image/png;base64,AAAA",
-  tiers: [{ id: "t1", name: "General", price: "120", quantity: "500" }],
+  venueId: "",
+  tiers: [{ id: "t1", name: "General", price: "120", quantity: "500", zoneId: "" }],
 };
 
 describe("validateEventForm", () => {
@@ -61,7 +62,7 @@ describe("validateEventForm", () => {
 
   it("validates tier values", () => {
     const errors = validateEventForm(
-      { ...validValues, tiers: [{ id: "t1", name: "VIP", price: "0", quantity: "1.5" }] },
+      { ...validValues, tiers: [{ id: "t1", name: "VIP", price: "0", quantity: "1.5", zoneId: "" }] },
       "publish",
       NOW,
     );
@@ -75,7 +76,7 @@ describe("validateEventForm", () => {
   it("caps price and quantity", () => {
     const check = (price: string, quantity: string) =>
       validateEventForm(
-        { ...validValues, tiers: [{ id: "t1", name: "VIP", price, quantity }] },
+        { ...validValues, tiers: [{ id: "t1", name: "VIP", price, quantity, zoneId: "" }] },
         "publish",
         NOW,
       );
@@ -121,5 +122,58 @@ describe("validateEventForm", () => {
     expect(check("", "draft")).toBeUndefined();
     expect(check("")).toBe("Sube una imagen de portada");
     expect(check("data:image/gif;base64,AAAA", "draft")).toBe("Formato de imagen no valido");
+  });
+});
+
+describe("validateEventForm with a venue", () => {
+  const VENUE_ID = "11111111-1111-4111-8111-111111111111";
+  const withVenue = (tiers: EventFormValues["tiers"], venue = "", city = ""): EventFormValues => ({
+    ...validValues,
+    venue,
+    city,
+    venueId: VENUE_ID,
+    tiers,
+  });
+  const tier = (id: string, zoneId: string, quantity = "10") => ({
+    id,
+    name: `Tipo ${id}`,
+    price: "10",
+    quantity,
+    zoneId,
+  });
+
+  it("does not require the free-text venue and city", () => {
+    expect(validateEventForm(withVenue([tier("a", "z1")]), "publish", NOW)).toEqual({});
+  });
+
+  it("requires a zone per tier and rejects repeated zones", () => {
+    const errors = validateEventForm(
+      withVenue([tier("a", ""), tier("b", "z1"), tier("c", "z1")]),
+      "publish",
+      NOW,
+    );
+    expect(errors["tiers.0.zoneId"]).toBe("Elige la zona del recinto");
+    expect(errors["tiers.1.zoneId"]).toBeUndefined();
+    expect(errors["tiers.2.zoneId"]).toBe("Esta zona ya tiene un tipo de entrada");
+  });
+
+  it("caps general zones to their capacity", () => {
+    const zones = { z1: { kind: "general" as const, capacity: 300 } };
+    expect(
+      validateEventForm(withVenue([tier("a", "z1", "301")]), "publish", NOW, zones)["tiers.0.quantity"],
+    ).toBe("La zona admite hasta 300 entradas");
+    expect(validateEventForm(withVenue([tier("a", "z1", "300")]), "publish", NOW, zones)).toEqual({});
+  });
+
+  it("ignores blank tier rows and still requires the zone in drafts", () => {
+    const blank = { id: "x", name: "", price: "", quantity: "", zoneId: "" };
+    expect(validateEventForm(withVenue([blank]), "draft", NOW)).toEqual({});
+    expect(validateEventForm(withVenue([tier("a", "")]), "draft", NOW)["tiers.0.zoneId"]).toBeTruthy();
+  });
+
+  it("keeps requiring venue and city without a venue", () => {
+    const errors = validateEventForm({ ...validValues, venue: "", city: "" }, "publish", NOW);
+    expect(errors.venue).toBeTruthy();
+    expect(errors.city).toBeTruthy();
   });
 });

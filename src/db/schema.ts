@@ -1,4 +1,5 @@
 export * from "@/modules/user/db/user.table";
+export * from "@/modules/venue/db/venue.table";
 export * from "@/modules/event/db/event.table";
 export * from "@/modules/event/db/ticket-tier.table";
 export * from "@/modules/order/db/order.table";

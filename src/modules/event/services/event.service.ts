@@ -2,8 +2,13 @@ import "server-only";
 import { and, asc, eq, gte, inArray, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { buildVenueLayoutFromTiers } from "@/modules/ticket/utils/tier-layout.utils";
+import {
+  buildVenueLayoutFromTiers,
+  buildVenueLayoutFromVenueZones,
+  type VenueZoneLayoutInput,
+} from "@/modules/ticket/utils/tier-layout.utils";
 import type { VenueLayout } from "@/modules/ticket/types/ticket.types";
+import { venueSeats, venueZones } from "@/modules/venue/db/venue.table";
 
 import { events } from "../db/event.table";
 import { ticketTiers } from "../db/ticket-tier.table";
@@ -34,21 +39,74 @@ async function selectEvents(where: SQL | undefined, limit?: number): Promise<Eve
   return limit ? query.limit(limit) : query;
 }
 
+type VenueZoneRow = typeof venueZones.$inferSelect;
+type VenueSeatRow = { venueZoneId: string; rowLabel: string; seatNumber: number };
+
+// Una consulta por lote para zonas y asientos de los eventos con recinto (no N+1).
+async function loadVenueZones(zoneIds: string[]) {
+  const zones = new Map<string, VenueZoneRow>();
+  const seats = new Map<string, VenueSeatRow[]>();
+  if (zoneIds.length === 0) return { zones, seats };
+
+  const zoneRows = await db.select().from(venueZones).where(inArray(venueZones.id, zoneIds));
+  for (const zone of zoneRows) zones.set(zone.id, zone);
+  const numberedIds = zoneRows.filter((zone) => zone.kind === "numbered").map((zone) => zone.id);
+  if (numberedIds.length > 0) {
+    const seatRows = await db
+      .select({
+        venueZoneId: venueSeats.venueZoneId,
+        rowLabel: venueSeats.rowLabel,
+        seatNumber: venueSeats.seatNumber,
+      })
+      .from(venueSeats)
+      .where(inArray(venueSeats.venueZoneId, numberedIds));
+    for (const seat of seatRows) {
+      seats.set(seat.venueZoneId, [...(seats.get(seat.venueZoneId) ?? []), seat]);
+    }
+  }
+  return { zones, seats };
+}
+
+const isVenueEvent = (row: EventRow, tiers: readonly TierRow[]) =>
+  Boolean(row.venueId) && tiers.length > 0 && tiers.every((tier) => Boolean(tier.venueZoneId));
+
 async function toPublished(rows: EventRow[]): Promise<PublishedEvent[]> {
   const tiersByEvent = await loadTiersByEvent(rows.map((row) => row.id));
+  const venueZoneIds = rows.flatMap((row) => {
+    const tiers = tiersByEvent.get(row.id) ?? [];
+    return isVenueEvent(row, tiers) ? tiers.map((tier) => tier.venueZoneId!) : [];
+  });
+  const venue = await loadVenueZones(venueZoneIds);
+
   return rows.map((row) => {
     const tiers = tiersByEvent.get(row.id) ?? [];
     const event = toEventEntity(row, tiers);
-    const layout = buildVenueLayoutFromTiers(
-      event,
-      tiers.map((tier) => ({
-        id: tier.id,
-        name: tier.name,
-        price: Number(tier.price),
-        totalStock: tier.totalStock,
-      })),
-    );
-    return { event, layout };
+    const toInput = (tier: TierRow) => ({
+      id: tier.id,
+      name: tier.name,
+      price: Number(tier.price),
+      totalStock: tier.totalStock,
+    });
+
+    if (isVenueEvent(row, tiers) && tiers.every((tier) => venue.zones.has(tier.venueZoneId!))) {
+      const inputs = tiers
+        .map((tier): VenueZoneLayoutInput & { zone: VenueZoneRow } => {
+          const zone = venue.zones.get(tier.venueZoneId!)!;
+          return {
+            zone,
+            kind: zone.kind,
+            seats: venue.seats.get(zone.id) ?? [],
+            tier: toInput(tier),
+          };
+        })
+        .sort(
+          (a, b) =>
+            a.zone.sortOrder - b.zone.sortOrder ||
+            a.zone.createdAt.getTime() - b.zone.createdAt.getTime(),
+        );
+      return { event, layout: buildVenueLayoutFromVenueZones(row.venueName, inputs) };
+    }
+    return { event, layout: buildVenueLayoutFromTiers(event, tiers.map(toInput)) };
   });
 }
 

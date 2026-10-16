@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatEventDate, formatEventPrice } from "@/modules/event";
 
-import { ORGANIZER_EVENT_FILTERS, ORGANIZER_NEW_EVENT_PATH } from "../constants/organizer.constants";
+import {
+  getOrganizerCheckInPath,
+  getOrganizerOrdersPath,
+  ORGANIZER_EVENT_FILTERS,
+  ORGANIZER_NEW_EVENT_PATH,
+} from "../constants/organizer.constants";
 import { OrganizerEventActions } from "./organizer-event-actions";
 import { OrganizerEventFeaturedToggle } from "./organizer-event-featured-toggle";
 import type {
@@ -156,7 +161,27 @@ export function OrganizerEventList({ events, filter, onFilterChange }: Organizer
                     <span className="text-muted-foreground lg:hidden">Ingresos: </span>
                     {isDraft ? "—" : formatEventPrice(event.revenue)}
                   </span>
-                  <div className="flex justify-end gap-1">
+                  <div className="flex items-center justify-end gap-1">
+                    {(event.status === "published" || event.status === "cancelled") && (
+                      <Button
+                        render={<Link href={getOrganizerOrdersPath(event.id)} />}
+                        nativeButton={false}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Ordenes
+                      </Button>
+                    )}
+                    {event.status === "published" && (
+                      <Button
+                        render={<Link href={getOrganizerCheckInPath(event.id)} />}
+                        nativeButton={false}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Check-in
+                      </Button>
+                    )}
                     <OrganizerEventFeaturedToggle eventId={event.id} isFeatured={event.isFeatured} />
                     <OrganizerEventActions event={event} />
                   </div>

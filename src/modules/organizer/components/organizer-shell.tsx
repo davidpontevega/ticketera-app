@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { getInitials } from "@/modules/auth";
 import type { UserEntity } from "@/modules/user";
 
-import { ORGANIZER_NAV } from "../constants/organizer.constants";
+import { ORGANIZER_NAV, ORGANIZER_VENUES_PATH } from "../constants/organizer.constants";
 
 export interface OrganizerShellProps {
   viewer: Pick<UserEntity, "fullName" | "email">;
@@ -37,7 +37,9 @@ function OrganizerNav({ pathname, onNavigate }: { pathname: string; onNavigate?:
   return (
     <nav aria-label="Panel" className="flex flex-col gap-1">
       {ORGANIZER_NAV.map(({ href, label, icon: Icon }) => {
-        const isCurrent = href === pathname;
+        // Recintos tambien es la seccion activa en sus subrutas (/new, /[id]).
+        const isCurrent =
+          href === pathname || (href === ORGANIZER_VENUES_PATH && pathname.startsWith(`${href}/`));
         return (
           <Link
             key={href}

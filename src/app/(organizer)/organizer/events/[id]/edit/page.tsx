@@ -5,6 +5,7 @@ import { z } from "zod";
 import { EventForm } from "@/modules/organizer";
 // Ruta directa: el servicio es server-only y el barrel llega al bundle cliente.
 import { getEventForEdit } from "@/modules/organizer/services/organizer-event-write.service";
+import { listVenueOptions } from "@/modules/venue/services/venue.service";
 import { ORGANIZER_AREA_ROLES, requireRole } from "@/modules/user";
 
 export const metadata: Metadata = { title: "Editar evento | Ticketera" };
@@ -24,6 +25,7 @@ export default async function EditEventPage({ params }: PageProps<"/organizer/ev
       status={event.status}
       initialValues={event.values}
       tiersLocked={event.hasOrders}
+      venueOptions={await listVenueOptions(viewer)}
     />
   );
 }

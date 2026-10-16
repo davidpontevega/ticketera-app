@@ -45,3 +45,12 @@ export function getOrderStatusFromEvent(event: Stripe.Event): OrderStatus | null
       return null;
   }
 }
+
+// PaymentIntent de un reembolso TOTAL (`charge.refunded`); null si el evento no aplica o es parcial.
+export function getRefundedPaymentIntentId(event: Stripe.Event): string | null {
+  if (event.type !== "charge.refunded") return null;
+  const charge = event.data.object as Stripe.Charge;
+  if (!charge.refunded) return null;
+  const intent = charge.payment_intent;
+  return (typeof intent === "string" ? intent : intent?.id) ?? null;
+}

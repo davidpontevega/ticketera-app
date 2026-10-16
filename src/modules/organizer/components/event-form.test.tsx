@@ -25,7 +25,8 @@ const INITIAL: EventFormValues = {
   venue: "Parque Central",
   city: "Lima",
   imageUrl: "data:image/png;base64,AAAA",
-  tiers: [{ id: "11111111-1111-4111-8111-111111111111", name: "General", price: "50", quantity: "100" }],
+  venueId: "",
+  tiers: [{ id: "11111111-1111-4111-8111-111111111111", name: "General", price: "50", quantity: "100", zoneId: "" }],
 };
 
 beforeEach(() => {
@@ -141,5 +142,61 @@ describe("EventForm", () => {
     expect(await screen.findByText("Lugar no permitido")).toBeTruthy();
     expect(screen.getByText("Revisa los campos marcados")).toBeTruthy();
     expect(push).not.toHaveBeenCalled();
+  });
+});
+
+describe("EventForm with venues", () => {
+  const VENUE = {
+    id: "v1",
+    name: "Teatro Central",
+    city: "Cusco",
+    zones: [
+      { id: "z1", name: "Platea", kind: "numbered" as const, capacity: 200 },
+      { id: "z2", name: "General", kind: "general" as const, capacity: 300 },
+    ],
+  };
+
+  it("hides the venue selector when there are no venues", () => {
+    render(<EventForm initialValues={INITIAL} />);
+    expect(screen.queryByLabelText("Recinto")).toBeNull();
+    expect(screen.getByLabelText("Lugar")).toBeTruthy();
+  });
+
+  it("defaults to no venue and keeps the free-text place", () => {
+    render(<EventForm initialValues={INITIAL} venueOptions={[VENUE]} />);
+    expect((screen.getByLabelText("Recinto") as HTMLSelectElement).value).toBe("");
+    expect(screen.getByLabelText("Lugar")).toBeTruthy();
+    expect(screen.queryByLabelText(/Zona del recinto/)).toBeNull();
+  });
+
+  it("shows a zone per tier, fixes the numbered quantity and publishes with the ids", async () => {
+    createEventAction.mockResolvedValue({ status: "success", eventId: "e1" });
+    render(<EventForm initialValues={INITIAL} venueOptions={[VENUE]} />);
+    fireEvent.change(screen.getByLabelText("Recinto"), { target: { value: "v1" } });
+    expect(screen.queryByLabelText("Lugar")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Publicar evento" }));
+    expect(screen.getByText("Elige la zona del recinto")).toBeTruthy();
+    expect(createEventAction).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("Zona del recinto (tipo 1)"), { target: { value: "z1" } });
+    const quantity = screen.getByLabelText("Cantidad (tipo 1)") as HTMLInputElement;
+    expect(quantity.value).toBe("200");
+    expect(quantity.disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Publicar evento" }));
+    await waitFor(() => expect(createEventAction).toHaveBeenCalled());
+    const { values } = createEventAction.mock.calls[0][0];
+    expect(values.venueId).toBe("v1");
+    expect(values.tiers[0].zoneId).toBe("z1");
+  });
+
+  it("disables the venue and zone selectors when the event has sales", () => {
+    const initial = { ...INITIAL, venueId: "v1", tiers: [{ ...INITIAL.tiers[0], zoneId: "z2" }] };
+    render(
+      <EventForm eventId="e1" status="published" initialValues={initial} tiersLocked venueOptions={[VENUE]} />,
+    );
+    expect((screen.getByLabelText("Recinto") as HTMLSelectElement).disabled).toBe(true);
+    expect((screen.getByLabelText("Zona del recinto (tipo 1)") as HTMLSelectElement).disabled).toBe(true);
   });
 });
