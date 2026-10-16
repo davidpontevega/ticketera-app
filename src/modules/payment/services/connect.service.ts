@@ -16,6 +16,9 @@ interface ConnectUser {
   stripeAccountId: string | null;
 }
 
+// Payout manual: el balance queda en la cuenta conectada hasta que la plataforma lo libera (spec 049).
+const MANUAL_PAYOUTS = { payouts: { schedule: { interval: "manual" } } } as const;
+
 export type StartOnboardingResult = { url: string } | { error: "connect-disabled" };
 
 export async function startConnectOnboarding(user: ConnectUser, origin: string): Promise<StartOnboardingResult> {
@@ -28,6 +31,7 @@ export async function startConnectOnboarding(user: ConnectUser, origin: string):
         type: "express",
         country: process.env.STRIPE_CONNECT_ACCOUNT_COUNTRY || "US",
         capabilities: { transfers: { requested: true } },
+        settings: MANUAL_PAYOUTS,
         metadata: { userId: user.id },
       },
       { idempotencyKey: `connect-account-${user.id}` },
@@ -38,6 +42,9 @@ export async function startConnectOnboarding(user: ConnectUser, origin: string):
       .update(users)
       .set({ stripeAccountId: accountId, stripeOnboardingStatus: "pending" })
       .where(and(eq(users.id, user.id), isNull(users.stripeAccountId)));
+  } else {
+    // Idempotente: migra cuentas creadas con payout automatico.
+    await stripe.accounts.update(accountId, { settings: MANUAL_PAYOUTS });
   }
 
   const link = await stripe.accountLinks.create({

@@ -7,3 +7,4 @@ export * from "@/modules/order/db/order-item.table";
 export * from "@/modules/ticket/db/ticket.table";
 export * from "@/modules/favorite/db/favorite.table";
 export * from "@/modules/newsletter/db/newsletter-subscriber.table";
+export * from "@/modules/payment/db/event-payout.table";

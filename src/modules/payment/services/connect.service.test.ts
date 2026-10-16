@@ -4,10 +4,11 @@ vi.mock("server-only", () => ({}));
 
 const accountsCreate = vi.fn();
 const accountsRetrieve = vi.fn();
+const accountsUpdate = vi.fn();
 const accountLinksCreate = vi.fn();
 vi.mock("@/lib/stripe", () => ({
   stripe: {
-    accounts: { create: (...a: unknown[]) => accountsCreate(...a), retrieve: (...a: unknown[]) => accountsRetrieve(...a) },
+    accounts: { create: (...a: unknown[]) => accountsCreate(...a), retrieve: (...a: unknown[]) => accountsRetrieve(...a), update: (...a: unknown[]) => accountsUpdate(...a) },
     accountLinks: { create: (...a: unknown[]) => accountLinksCreate(...a) },
   },
 }));
@@ -47,7 +48,11 @@ describe("startConnectOnboarding", () => {
     const result = await startConnectOnboarding({ id: "u1", stripeAccountId: null }, ORIGIN);
     expect(result).toEqual({ url: "https://connect.stripe.com/x" });
     expect(accountsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "express", capabilities: { transfers: { requested: true } } }),
+      expect.objectContaining({
+        type: "express",
+        capabilities: { transfers: { requested: true } },
+        settings: { payouts: { schedule: { interval: "manual" } } },
+      }),
       { idempotencyKey: "connect-account-u1" },
     );
     expect(set).toHaveBeenCalledWith({ stripeAccountId: "acct_new", stripeOnboardingStatus: "pending" });
@@ -59,9 +64,10 @@ describe("startConnectOnboarding", () => {
     });
   });
 
-  it("con cuenta existente solo crea un AccountLink nuevo", async () => {
+  it("con cuenta existente fija el payout manual y crea un AccountLink nuevo", async () => {
     await startConnectOnboarding({ id: "u1", stripeAccountId: "acct_old" }, ORIGIN);
     expect(accountsCreate).not.toHaveBeenCalled();
+    expect(accountsUpdate).toHaveBeenCalledWith("acct_old", { settings: { payouts: { schedule: { interval: "manual" } } } });
     expect(set).not.toHaveBeenCalled();
     expect(accountLinksCreate).toHaveBeenCalledWith(expect.objectContaining({ account: "acct_old" }));
   });
