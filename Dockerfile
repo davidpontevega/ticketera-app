@@ -14,7 +14,9 @@ ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \
     NEXT_TELEMETRY_DISABLED=1
 # Placeholders solo para `next build` (colecta de paginas); en runtime vienen de SSM.
-ENV STRIPE_SECRET_KEY=sk_test_build_placeholder \n    CLERK_SECRET_KEY=sk_test_build_placeholder \n    DATABASE_URL=postgresql://build:build@localhost:5432/build
+ENV STRIPE_SECRET_KEY=sk_test_build_placeholder \
+    CLERK_SECRET_KEY=sk_test_build_placeholder \
+    DATABASE_URL=postgresql://build:build@localhost:5432/build
 COPY . .
 RUN npm run build
 
