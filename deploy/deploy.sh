@@ -18,12 +18,14 @@ aws ssm get-parameters-by-path --region "$REGION" --path /ticketera --with-decry
 docker run --rm --env-file "$ENV_FILE" "$IMAGE:$TAG-migrate"
 
 docker rm -f ticketera 2>/dev/null || true
-docker run -d --name ticketera --restart unless-stopped --env-file "$ENV_FILE" -p 3000:3000 \
+docker run -d --name ticketera --restart unless-stopped --env-file "$ENV_FILE" -p 127.0.0.1:3001:3000 \
   --log-driver awslogs --log-opt awslogs-region="$REGION" --log-opt awslogs-group=/ticketera/app \
   "$IMAGE:$TAG"
 
+systemctl restart nginx
+
 for _ in $(seq 1 30); do
-  curl -fs http://localhost:3000/api/health && exit 0
+  curl -fs http://localhost:3001/api/health && exit 0
   sleep 2
 done
 docker logs --tail 50 ticketera
