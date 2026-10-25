@@ -29,6 +29,11 @@ vi.mock("../services/organizer-event-write.service", () => ({
   updateEvent: (...args: unknown[]) => updateEvent(...args),
 }));
 
+const uploadDataUrlImage = vi.fn();
+vi.mock("@/lib/s3", () => ({
+  uploadDataUrlImage: (...args: unknown[]) => uploadDataUrlImage(...args),
+}));
+
 const revalidatePath = vi.fn();
 vi.mock("next/cache", () => ({
   revalidatePath: (...args: unknown[]) => revalidatePath(...args),
@@ -64,6 +69,7 @@ beforeEach(() => {
   setEventFeatured.mockResolvedValue({ ok: true });
   createEvent.mockResolvedValue({ ok: true, eventId: VALID_EVENT_ID });
   updateEvent.mockResolvedValue({ ok: true });
+  uploadDataUrlImage.mockImplementation(async (value: string) => value);
 });
 
 describe("requireRole guard (AC6)", () => {
@@ -484,6 +490,23 @@ const VALID_VALUES: EventFormValues = {
 const PUBLISH = { values: VALID_VALUES, intent: "publish" as const };
 
 describe("createEventAction", () => {
+  it("sube la portada a S3 y crea el evento con la URL devuelta", async () => {
+    uploadDataUrlImage.mockResolvedValue("https://cdn.test/media/events/x.jpg");
+    await createEventAction(PUBLISH);
+    expect(uploadDataUrlImage).toHaveBeenCalledWith(VALID_VALUES.imageUrl, "events");
+    expect(createEvent.mock.calls[0][0].values.imageUrl).toBe("https://cdn.test/media/events/x.jpg");
+  });
+
+  it("si falla la subida a S3 no crea el evento", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    uploadDataUrlImage.mockRejectedValue(new Error("s3 down"));
+    expect(await createEventAction(PUBLISH)).toEqual({
+      status: "error",
+      message: "No se pudo guardar, intenta de nuevo",
+    });
+    expect(createEvent).not.toHaveBeenCalled();
+  });
+
   it("requireRole corre primero: si rechaza no se valida ni se escribe", async () => {
     requireRole.mockRejectedValue(new Error("NEXT_REDIRECT"));
     await expect(createEventAction(PUBLISH)).rejects.toThrow();

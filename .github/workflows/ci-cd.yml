@@ -41,7 +41,8 @@ jobs:
             --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="$(param NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)" \
             --build-arg NEXT_PUBLIC_CLERK_SIGN_IN_URL="$(param NEXT_PUBLIC_CLERK_SIGN_IN_URL)" \
             --build-arg NEXT_PUBLIC_CLERK_SIGN_UP_URL="$(param NEXT_PUBLIC_CLERK_SIGN_UP_URL)" \
-            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="$(param NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)" .
+            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="$(param NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)" \
+            --build-arg NEXT_PUBLIC_MEDIA_URL="$(param NEXT_PUBLIC_MEDIA_URL)" .
           docker build --target migrate -t $REGISTRY/ticketera:$GITHUB_SHA-migrate .
           docker push $REGISTRY/ticketera:$GITHUB_SHA
           docker push $REGISTRY/ticketera:$GITHUB_SHA-migrate

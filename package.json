@@ -15,6 +15,7 @@
     "db:seed": "tsx --env-file=.env scripts/seed-events.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1156.0",
     "@base-ui/react": "^1.8.0",
     "@clerk/localizations": "^4.21.1",
     "@clerk/nextjs": "^7.9.9",

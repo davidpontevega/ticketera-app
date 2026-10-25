@@ -30,12 +30,17 @@ const tierSchema = z.object({
     .refine((value) => Number(value) <= 2_147_483_647, "La cantidad es demasiado alta"),
 });
 
-// Portada: data URL jpeg/png (subida) o https de images.unsplash.com (unico host de next.config.ts),
-// con tope de largo (la action la valida en servidor).
+// Portada: data URL jpeg/png (subida; la action la pasa a S3) o https de images.unsplash.com / del bucket
+// de media (NEXT_PUBLIC_MEDIA_URL), los hosts de next.config.ts; con tope de largo (la action la valida en servidor).
 export const EVENT_IMAGE_MAX_LENGTH = 700_000;
+const IMAGE_URL_PREFIXES = ["https://images.unsplash.com", process.env.NEXT_PUBLIC_MEDIA_URL]
+  .filter((prefix): prefix is string => Boolean(prefix))
+  .map((prefix) => prefix.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&"))
+  .join("|");
 // Anclado con $: sin espacios ni caracteres de control en la URL, y solo base64 valido en el data URL.
-const IMAGE_URL_PATTERN =
-  /^(?:data:image\/(?:jpeg|png);base64,[A-Za-z0-9+/]+={0,2}|https:\/\/images\.unsplash\.com\/[^\s\u0000-\u001f\u007f]*)$/;
+const IMAGE_URL_PATTERN = new RegExp(
+  String.raw`^(?:data:image\/(?:jpeg|png);base64,[A-Za-z0-9+/]+={0,2}|(?:${IMAGE_URL_PREFIXES})\/[^\s\u0000-\u001f\u007f]*)$`,
+);
 const imageFormatSchema = z
   .string()
   .max(EVENT_IMAGE_MAX_LENGTH, "La imagen es demasiado pesada")

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { uploadDataUrlImage } from "@/lib/s3";
 import { ORGANIZER_AREA_ROLES, requireRole } from "@/modules/user";
 
 import {
@@ -196,13 +197,27 @@ function toSaveError(error: SaveEventError): SaveEventActionState {
   return { status: "error", message, ...(field && { fieldErrors: { [field]: message } }) };
 }
 
+// La portada llega como data URL desde el form: se sube a S3 y se guarda solo su URL.
+async function withUploadedCover(input: SaveEventInput): Promise<SaveEventInput | null> {
+  try {
+    const imageUrl = await uploadDataUrlImage(input.values.imageUrl, "events");
+    return { ...input, values: { ...input.values, imageUrl } };
+  } catch (error) {
+    console.error("Failed to upload event cover:", error);
+    return null;
+  }
+}
+
 export async function createEventAction(input: SaveEventInput): Promise<SaveEventActionState> {
   const viewer = await requireRole(ORGANIZER_AREA_ROLES);
 
   const invalid = validateInput(input);
   if (invalid) return invalid;
 
-  const result = await createEvent(input, viewer);
+  const uploaded = await withUploadedCover(input);
+  if (!uploaded) return toSaveError("unknown");
+
+  const result = await createEvent(uploaded, viewer);
   if (!result.ok) return toSaveError(result.error);
 
   revalidatePath(ORGANIZER_PATH);
@@ -219,7 +234,10 @@ export async function updateEventAction(
   const invalid = validateInput(input, new Date(0));
   if (invalid) return invalid;
 
-  const result = await updateEvent(eventId, input, viewer);
+  const uploaded = await withUploadedCover(input);
+  if (!uploaded) return toSaveError("unknown");
+
+  const result = await updateEvent(eventId, uploaded, viewer);
   if (!result.ok) return toSaveError(result.error);
 
   revalidatePath(ORGANIZER_PATH);
